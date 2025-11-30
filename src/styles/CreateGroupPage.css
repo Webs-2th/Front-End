@@ -15,7 +15,6 @@
   border-radius: 8px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 
-  /* ▼▼▼ [핵심] 이 줄이 없으면 X버튼이 엉뚱한 곳으로 날아갑니다! ▼▼▼ */
   position: relative;
 }
 
