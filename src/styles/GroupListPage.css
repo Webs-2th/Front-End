@@ -1,0 +1,107 @@
+/* src/styles/GroupListPage.css */
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  font-family: "Pretendard", sans-serif; /* 폰트는 임의 설정 */
+}
+
+/* 상단 헤더 영역 (버튼) */
+.header-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+/* 검색 및 필터 영역 */
+.search-bar-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 80px;
+}
+
+.search-input-container {
+  flex: 1;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  margin-right: 20px;
+}
+
+.search-icon {
+  margin-right: 10px;
+  color: #888;
+}
+
+.search-input {
+  border: none;
+  background: transparent;
+  width: 100%;
+  outline: none;
+  font-size: 14px;
+}
+
+.filter-select {
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+}
+
+/* 데이터 없음 (Empty State) 영역 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 100px;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  background-color: #f4f4f4;
+  margin-bottom: 20px;
+  /* 실제 아이콘 이미지 대신 간단한 스타일로 대체했습니다. 실제 이미지로 교체하세요. */
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
+  font-size: 40px;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.empty-description {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 40px;
+}
+
+/* 공통 버튼 스타일 */
+.btn-black {
+  background-color: #282828;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-large {
+  width: 300px; /* 중앙 버튼 크기 조절 */
+}
