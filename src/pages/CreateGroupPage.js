@@ -1,13 +1,15 @@
 import React from "react";
+import { useNavigate } from "react-router-dom"; // ✅ 이동 도구
 import "../styles/CreateGroupPage.css";
 
-// onCloseClick: App.js에서 받아온 "목록으로 돌아가는 함수"
-const CreateGroupPage = ({ onCloseClick }) => {
+const CreateGroupPage = () => {
+  const navigate = useNavigate(); // ✅ 이동 함수 생성
+
   return (
     <div className="create-container">
       <div className="form-box">
-        {/* ▼▼▼ [중요] 닫기 버튼 코드가 여기 있어야 합니다! ▼▼▼ */}
-        <button className="close-btn" onClick={onCloseClick}>
+        {/* X 버튼 클릭 시 홈('/')으로 이동 */}
+        <button className="close-btn" onClick={() => navigate("/")}>
           ×
         </button>
 
