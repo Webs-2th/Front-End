@@ -128,7 +128,7 @@
 }
 
 .ig-auth-footer a {
-  color: #0095f6; /* 링크 색은 파란색 유지 (혹은 원하면 변경 가능) */
+  color: #fcc41d; /* 링크 색은 파란색 유지 (혹은 원하면 변경 가능) */
   font-weight: 600;
   text-decoration: none;
   margin-left: 5px;

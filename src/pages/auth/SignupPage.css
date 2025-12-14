@@ -21,13 +21,14 @@
   box-sizing: border-box;
 }
 
+/* 로고 스타일 (Archive 필기체) */
 .ig-logo-text {
-  font-family: sans-serif;
-  font-size: 40px;
+  font-family: "Grand Hotel", cursive;
+  font-size: 50px;
   margin: 0 0 10px 0;
   color: #262626;
   font-weight: 500;
-  letter-spacing: -1px;
+  letter-spacing: 1px;
 }
 
 .ig-sub-text {
@@ -62,7 +63,7 @@
 /* ★ 버튼 색상 변경 (#f6e4c1) ★ */
 .ig-submit-btn {
   margin-top: 10px;
-  background-color: #f6e4c1; /* 요청하신 베이지색 */
+  background-color: #f6e4c1; /* 베이지색 */
   color: #262626; /* 글자색 진한 회색 */
   border: none;
   border-radius: 4px;
@@ -108,7 +109,7 @@
 }
 
 .ig-auth-footer a {
-  color: #f6c054;
+  color: #fcc41d;
   font-weight: 600;
   text-decoration: none;
   margin-left: 5px;

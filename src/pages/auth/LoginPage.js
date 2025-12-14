@@ -34,7 +34,7 @@ const LoginPage = () => {
           <div className="ig-input-group">
             <input
               type="email"
-              placeholder="전화번호, 사용자 이름 또는 이메일"
+              placeholder="이메일"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
