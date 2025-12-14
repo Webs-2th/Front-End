@@ -39,14 +39,16 @@
 /* 이미지 영역 (정사각형 + 전체 보이기) */
 .post-image {
   width: 100%;
-  aspect-ratio: 1 / 1;
-  background-color: #fafafa;
-  overflow: hidden;
+  height: 400px; /* ★ 핵심: 높이를 400px(또는 1:1 비율)로 고정 */
+  background-color: #fafafa; /* 이미지가 작을 때 남는 여백 색상 (연회색) */
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: hidden; /* 넘치는 부분 잘라내기 */
   cursor: pointer;
+  border-bottom: 1px solid #efefef;
 }
+
 .post-image img {
   width: 100%;
   height: 100%;
