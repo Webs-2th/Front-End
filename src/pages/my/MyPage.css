@@ -1,0 +1,101 @@
+.mypage {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  padding-bottom: 100px;
+}
+
+.profile-card {
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 30px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #0095f6;
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nickname {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.email {
+  font-size: 13px;
+  color: #888;
+}
+
+.profile-info input {
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.profile-actions {
+  margin-top: 12px;
+}
+
+.profile-actions button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #dbdbdb;
+  background: white;
+  cursor: pointer;
+}
+
+.profile-actions .save {
+  background: #0095f6;
+  color: white;
+  border: none;
+}
+
+.profile-actions .cancel {
+  margin-left: 8px;
+}
+
+.mypage-section {
+  margin-bottom: 28px;
+}
+
+.mypage-section h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.mypage-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.mypage-section li {
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.comment-post {
+  color: #888;
+  font-size: 13px;
+}

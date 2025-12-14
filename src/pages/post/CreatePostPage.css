@@ -1,0 +1,29 @@
+.create-post-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.create-post-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.create-post-form input,
+.create-post-form textarea {
+  padding: 10px;
+  font-size: 14px;
+}
+
+.create-post-form textarea {
+  height: 200px;
+}
+
+.create-post-form button {
+  padding: 12px;
+  background-color: #222;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
