@@ -1,0 +1,55 @@
+/* 배경 클릭 시 닫히게 하기 위한 투명 레이어 */
+.menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99; /* 메뉴보다 한 단계 아래 */
+  background: transparent;
+  cursor: default;
+}
+
+/* 메뉴 박스 스타일 */
+.menu-dropdown {
+  position: absolute;
+  top: 100%; /* 부모(헤더)의 바닥 라인에 맞춤 */
+  right: 15px; /* 화면 오른쪽 여백 */
+
+  width: 100px;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100; /* 제일 위에 표시 */
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.menu-btn {
+  background: white;
+  border: none;
+  padding: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: center;
+}
+
+.menu-btn:last-child {
+  border-bottom: none;
+}
+
+.menu-btn:hover {
+  background-color: #f9f9f9;
+}
+
+.menu-btn.delete {
+  color: #ff3b30; /* 삭제 버튼 빨간색 */
+}
+
+.menu-btn.cancel {
+  color: #999;
+}
