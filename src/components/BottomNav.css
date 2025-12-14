@@ -1,8 +1,15 @@
 .bottom-nav {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+
+  /* 화면 전체가 아니라 중앙에 위치하도록 수정 */
+  left: 50%;
+  transform: translateX(-50%);
+
+  /* 너비 설정: 화면이 작을 땐 꽉 차고, 클 땐 제한 */
+  width: 100%;
+  max-width: 500px; /* ⚠️ 중요: App.css나 메인 컨테이너의 max-width와 똑같이 맞춰주세요 (보통 480px ~ 600px 사이) */
+
   height: 64px;
 
   display: flex;
@@ -11,22 +18,32 @@
 
   background-color: #ffffff;
   border-top: 1px solid #dbdbdb;
+  /* 좌우 테두리도 있으면 더 자연스러울 수 있음 (선택사항) */
+  /* border-left: 1px solid #dbdbdb; */
+  /* border-right: 1px solid #dbdbdb; */
+
   z-index: 1000;
+  box-sizing: border-box; /* 패딩 등이 있어도 너비 안 깨지게 설정 */
 }
 
 .nav-item {
   flex: 1;
-  text-align: center;
+  display: flex; /* 아이콘 수직 중앙 정렬 보완 */
+  justify-content: center;
+  align-items: center;
+
   font-size: 26px;
   color: #262626;
   cursor: pointer;
+  height: 100%; /* 터치 영역 확대 */
 }
 
 .nav-item.active {
-  color: #0095f6;
+  color: #000000; /* 인스타는 활성화되면 보통 검은색 */
+  font-weight: bold;
 }
 
 .nav-item.create {
-  font-size: 36px;
+  font-size: 32px;
   color: #262626;
 }

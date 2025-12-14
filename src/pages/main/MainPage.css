@@ -1,4 +1,135 @@
-.main-container {
-  padding: 24px;
-  padding-bottom: 80px; /* 하단바 공간 */
+/* ---- 기존 레이아웃 스타일 (유지) ---- */
+.main-page {
+  max-width: 500px;
+  margin: 0 auto;
+  padding-bottom: 70px;
+  background-color: #fafafa;
+  min-height: 100vh;
+}
+.empty-message {
+  text-align: center;
+  padding-top: 50px;
+  color: #8e8e8e;
+}
+.post-card {
+  background-color: white;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #dbdbdb;
+}
+.post-header {
+  display: flex;
+  align-items: center;
+  padding: 14px;
+  border-bottom: 1px solid #efefef;
+}
+.header-profile-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 10px;
+  object-fit: cover;
+  border: 1px solid #dbdbdb;
+}
+.header-username {
+  font-weight: 600;
+  font-size: 14px;
+  color: #262626;
+}
+.post-image {
+  width: 100%;
+  cursor: pointer;
+}
+.post-image img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  max-height: 600px;
+}
+.post-content {
+  padding: 0 14px 14px 14px;
+}
+.likes-count {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #262626;
+}
+.caption {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.caption-username {
+  font-weight: 600;
+  margin-right: 6px;
+}
+.tags {
+  margin-bottom: 8px;
+}
+.tag-item {
+  color: #00376b;
+  font-size: 14px;
+  margin-right: 5px;
+  cursor: pointer;
+}
+.post-date {
+  font-size: 10px;
+  color: #8e8e8e;
+  text-transform: uppercase;
+}
+
+/* ---- ★ 아이콘 CSS (여기가 핵심) ★ ---- */
+
+/* 아이콘 버튼 공통 스타일 */
+.post-actions {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+}
+
+.icon-btn {
+  width: 28px; /* 버튼 크기 */
+  height: 28px;
+  border: none;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain; /* 아이콘 꽉 차게 */
+  cursor: pointer;
+  margin-right: 16px;
+  transition: transform 0.1s;
+}
+
+.icon-btn:active {
+  transform: scale(1.2); /* 클릭 효과 */
+}
+
+/* 1. 댓글 아이콘 (SVG URL 변환됨) */
+.icon-btn.comment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z'/%3E%3C/svg%3E");
+}
+
+/* 2. 하트 아이콘 (빈 하트) */
+.icon-btn.heart {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'/%3E%3C/svg%3E");
+}
+
+/* 3. 하트 아이콘 (좋아요 눌렀을 때 - 빨간색) */
+.icon-btn.heart.liked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='red' stroke='red' stroke-width='2'%3E%3Cpath d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'/%3E%3C/svg%3E");
+  animation: heartPop 0.3s ease-in-out; /* 뽕! 하고 커지는 효과 추가 */
+}
+
+/* 뽀너스: 좋아요 누를 때 튀는 애니메이션 */
+@keyframes heartPop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
