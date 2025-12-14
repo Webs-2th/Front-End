@@ -1,7 +1,6 @@
-import { useState } from "react"; // useRef는 이제 안 씀 (부모 거 쓸 거라)
+import { useState } from "react";
 import "./CommentSection.css";
 
-// props에 inputRef 추가됨
 const CommentSection = ({
   comments,
   currentUser,
@@ -38,29 +37,41 @@ const CommentSection = ({
       <div className="comments-list">
         {comments.map((c) => (
           <div key={c.id} className="comment-item">
-            <span className="comment-username">{c.username}</span>
+            {/* 1. 댓글 내용 영역 (아이디 + 텍스트) */}
+            <div className="comment-main">
+              <span className="comment-username">{c.username}</span>
 
-            {editingId === c.id ? (
-              <div className="edit-mode">
-                <input
-                  className="edit-input"
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                />
-                <button onClick={() => finishEdit(c.id)} className="save-btn">
-                  완료
-                </button>
-              </div>
-            ) : (
-              <span className="comment-text">{c.text}</span>
-            )}
+              {editingId === c.id ? (
+                <div className="edit-mode">
+                  <input
+                    className="edit-input"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                  />
+                  <button onClick={() => finishEdit(c.id)} className="save-btn">
+                    완료
+                  </button>
+                </div>
+              ) : (
+                <span className="comment-text">{c.text}</span>
+              )}
+            </div>
 
-            {c.username === currentUser.username && !editingId && (
-              <div className="comment-actions">
-                <button onClick={() => startEdit(c.id, c.text)}>수정</button>
-                <button onClick={() => onDelete(c.id)} className="delete">
-                  삭제
-                </button>
+            {/* 2. 하단 정보 영역 (날짜 + 수정/삭제 버튼) */}
+            {!editingId && (
+              <div className="comment-meta">
+                <span className="comment-date">{c.date}</span>
+
+                {c.username === currentUser.username && (
+                  <div className="comment-actions">
+                    <button onClick={() => startEdit(c.id, c.text)}>
+                      수정
+                    </button>
+                    <button onClick={() => onDelete(c.id)} className="delete">
+                      삭제
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -69,7 +80,7 @@ const CommentSection = ({
 
       <form className="comment-input-bar" onSubmit={handleSubmit}>
         <input
-          ref={inputRef} /* ★ 여기에 부모에게 받은 ref 연결! */
+          ref={inputRef}
           type="text"
           placeholder="댓글 달기..."
           value={text}

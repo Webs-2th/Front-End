@@ -61,30 +61,38 @@ const MainPage = () => {
             </div>
           )}
 
-          {/* ★ 아이콘 영역 (SVG 태그 다 삭제함) ★ */}
+          {/* ★ 아이콘 + 숫자 영역 ★ */}
           <div className="post-actions">
-            {/* 하트 아이콘: 클래스 이름으로만 제어 */}
-            <button
-              className={`icon-btn heart ${post.isLiked ? "liked" : ""}`}
-              onClick={(e) => {
-                e.stopPropagation(); // 버튼 눌렀을 때 상세페이지 이동 방지
-                toggleLike(post.id);
-              }}
-            ></button>
+            {/* 1. 좋아요 그룹 */}
+            <div className="action-group">
+              <button
+                className={`icon-btn heart ${post.isLiked ? "liked" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLike(post.id);
+                }}
+              ></button>
+              <span className="count-text">{post.likes || 0}</span>
+            </div>
 
-            {/* 댓글 아이콘 */}
-            <button className="icon-btn comment"></button>
+            {/* 2. 댓글 그룹 */}
+            <div className="action-group">
+              <button className="icon-btn comment"></button>
+              <span className="count-text">{(post.comments || []).length}</span>
+            </div>
           </div>
 
           {/* 내용 */}
           <div className="post-content">
-            <div className="likes-count">좋아요 {post.likes || 0}개</div>
+            {/* 기존의 likes-count div는 삭제했습니다 */}
+
             <div className="caption" onClick={() => goToDetail(post.id)}>
               <span className="caption-username">
                 {post.author?.username || "익명"}
               </span>
               <span className="caption-text">{post.content}</span>
             </div>
+
             {post.tags && (
               <div className="tags">
                 {post.tags.split(" ").map((tag, idx) => (

@@ -5,18 +5,30 @@
 }
 
 .comment-section-wrapper {
-  padding-bottom: 60px; /* 입력창 높이만큼 여백 확보 */
+  padding-bottom: 60px;
 }
 
 .comments-list {
   padding: 0 10px;
 }
 
+/* 댓글 한 덩어리 */
 .comment-item {
   display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+  position: relative; /* ★ 중요: 여기가 기준점이 됩니다 */
+}
+
+/* 1. 상단: 아이디 + 내용 */
+.comment-main {
+  display: flex;
   align-items: flex-start;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   font-size: 14px;
+
+  /* 버튼이 올 자리를 위해 오른쪽 여백 확보 */
+  padding-right: 60px;
 }
 
 .comment-username {
@@ -26,33 +38,47 @@
 }
 
 .comment-text {
-  flex: 1;
   line-height: 1.4;
   word-break: break-all;
 }
 
-/* 수정/삭제 버튼 */
-.comment-actions {
-  margin-left: 8px;
+/* 2. 하단: 날짜 */
+.comment-meta {
   display: flex;
-  gap: 6px;
-  min-width: 50px;
+  align-items: center;
+  font-size: 12px;
+  color: #8e8e8e;
+}
+
+.comment-date {
+  /* 날짜는 그냥 왼쪽에 둠 */
+}
+
+/* ★ 3. 수정/삭제 버튼 (오른쪽 상단 고정) ★ */
+.comment-actions {
+  position: absolute; /* 둥둥 띄워서 배치를 자유롭게 함 */
+  right: 0; /* 오른쪽 끝에 붙임 */
+  top: 0; /* 위쪽 끝에 붙임 (살짝 내리고 싶으면 2px 정도로 조정) */
+
+  display: flex;
+  gap: 8px;
 }
 
 .comment-actions button {
   background: none;
   border: none;
-  font-size: 11px;
+  font-size: 12px;
   color: #8e8e8e;
   cursor: pointer;
   padding: 0;
+  font-weight: 500;
 }
 
 .comment-actions button.delete {
   color: #ed4956;
 }
 
-/* 수정 모드 */
+/* 수정 모드 입력창 */
 .edit-mode {
   flex: 1;
   display: flex;
@@ -63,7 +89,7 @@
   flex: 1;
   border: 1px solid #dbdbdb;
   border-radius: 4px;
-  padding: 2px 5px;
+  padding: 4px;
   font-size: 14px;
 }
 
@@ -74,6 +100,7 @@
   font-weight: 600;
   cursor: pointer;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 /* 하단 고정바 */
