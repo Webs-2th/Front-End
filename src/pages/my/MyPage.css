@@ -1,101 +1,238 @@
 .mypage {
-  max-width: 600px;
+  max-width: 500px;
   margin: 0 auto;
-  padding: 20px;
-  padding-bottom: 100px;
+  padding-bottom: 70px;
+  background-color: white;
+  min-height: 100vh;
 }
 
-.profile-card {
-  background: #fafafa;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 30px;
-}
-
+/* 1. 프로필 헤더 */
 .profile-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  padding: 20px 16px;
+  border-bottom: 1px solid #dbdbdb;
 }
 
-.avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: #0095f6;
-  color: white;
-  font-size: 28px;
-  font-weight: bold;
+.profile-img-container {
+  margin-right: 20px;
+  position: relative;
+}
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.my-profile-img {
+  width: 77px;
+  height: 77px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #dbdbdb;
 }
 
 .profile-info {
+  flex: 1;
+}
+
+.username-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: flex-start;
+  margin-bottom: 12px;
 }
 
-.nickname {
-  font-weight: bold;
-  font-size: 16px;
+.username {
+  font-size: 20px;
+  font-weight: 300;
+  margin-bottom: 8px;
 }
 
-.email {
+.edit-profile-btn {
+  background-color: #efefef;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 16px;
+  font-weight: 600;
   font-size: 13px;
-  color: #888;
-}
-
-.profile-info input {
-  padding: 6px 8px;
-  font-size: 14px;
-}
-
-.profile-actions {
-  margin-top: 12px;
-}
-
-.profile-actions button {
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid #dbdbdb;
-  background: white;
   cursor: pointer;
 }
 
-.profile-actions .save {
-  background: #0095f6;
-  color: white;
-  border: none;
-}
-
-.profile-actions .cancel {
-  margin-left: 8px;
-}
-
-.mypage-section {
-  margin-bottom: 28px;
-}
-
-.mypage-section h3 {
-  font-size: 15px;
+.stats-row {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
   margin-bottom: 10px;
 }
 
-.mypage-section ul {
-  list-style: none;
-  padding: 0;
+.bio-row {
+  font-size: 14px;
+  white-space: pre-wrap;
 }
 
-.mypage-section li {
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
+/* 편집 폼 스타일 */
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.edit-input {
+  border: 1px solid #dbdbdb;
+  border-radius: 4px;
+  padding: 6px;
   font-size: 14px;
 }
-
-.comment-post {
-  color: #888;
+.edit-buttons {
+  display: flex;
+  gap: 8px;
+}
+.save-btn {
+  background-color: #0095f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
   font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cancel-btn {
+  background-color: transparent;
+  border: 1px solid #dbdbdb;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 2. 탭 메뉴 */
+.profile-tabs {
+  display: flex;
+  border-bottom: 1px solid #dbdbdb;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 0;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+}
+
+.tab-item.active {
+  border-bottom: 1px solid #262626;
+}
+
+/* ---- ★ 아이콘 스타일 (CSS로 분리됨) ★ ---- */
+.tab-icon {
+  width: 24px;
+  height: 24px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  /* 기본 상태는 회색처럼 보이게 투명도 조절 */
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+
+/* 활성화된 탭의 아이콘은 진하게(검은색) */
+.tab-item.active .tab-icon {
+  opacity: 1;
+}
+
+/* 그리드 아이콘 URL */
+.tab-icon.grid {
+  background-image: url("data:image/svg+xml,%3Csvg aria-label='게시물' color='%23262626' fill='%23262626' height='24' role='img' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Crect fill='none' height='18' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' width='18' x='3' y='3'%3E%3C/rect%3E%3Cline fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' x1='9.015' x2='9.015' y1='3' y2='21'%3E%3C/line%3E%3Cline fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' x1='14.985' x2='14.985' y1='3' y2='21'%3E%3C/line%3E%3Cline fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' x1='21' x2='3' y1='9.015' y2='9.015'%3E%3C/line%3E%3Cline fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' x1='21' x2='3' y1='14.985' y2='14.985'%3E%3C/line%3E%3C/svg%3E");
+}
+
+/* 댓글(말풍선) 아이콘 URL */
+.tab-icon.comment {
+  background-image: url("data:image/svg+xml,%3Csvg aria-label='댓글' color='%23262626' fill='none' height='24' role='img' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20.656 17.008a9.993 9.993 0 1 0-3.59 3.615L22 22Z' fill='none' stroke='black' stroke-linejoin='round' stroke-width='2'%3E%3C/path%3E%3C/svg%3E");
+}
+
+/* 3. 그리드 뷰 (내 게시물) */
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3열 그리드 */
+  gap: 2px; /* 사이 간격 2px */
+}
+
+.grid-item {
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%; /* 1:1 비율 정사각형 */
+  background-color: #efefef;
+  cursor: pointer;
+}
+
+.grid-item img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 꽉 채우기 */
+}
+
+.no-image-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* 4. 리스트 뷰 (내 댓글) */
+.comments-list-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.comment-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid #efefef;
+  cursor: pointer;
+}
+
+.comment-thumb {
+  width: 40px;
+  height: 40px;
+  margin-right: 12px;
+  background-color: #efefef;
+}
+
+.comment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #ddd;
+}
+
+.comment-preview {
+  display: flex;
+  flex-direction: column;
+}
+
+.comment-text-bold {
+  font-size: 14px;
+  color: #262626;
+  margin-bottom: 4px;
+}
+
+.comment-date-small {
+  font-size: 12px;
+  color: #8e8e8e;
+}
+
+.no-content {
+  padding: 40px;
+  text-align: center;
+  color: #8e8e8e;
+  font-size: 14px;
 }

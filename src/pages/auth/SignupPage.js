@@ -34,44 +34,55 @@ const SignupPage = () => {
   };
 
   return (
-    <div className="auth-container">
-      <h2 className="auth-title">회원가입</h2>
+    <div className="auth-wrapper">
+      <div className="auth-container">
+        {/* 로고 */}
+        <h1 className="logo-text">Archive</h1>
 
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="이메일"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <h2 className="sub-text">추억을 보고 싶다면 가입하세요.</h2>
 
-        <input
-          type="password"
-          placeholder="비밀번호"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <input
+            type="email"
+            placeholder="이메일"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-        <input
-          type="password"
-          placeholder="비밀번호 확인"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-        />
+          <input
+            type="password"
+            placeholder="비밀번호"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
 
-        {error && <p className="auth-error">{error}</p>}
+          <input
+            type="password"
+            placeholder="비밀번호 확인"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
 
-        <button type="submit" disabled={loading}>
-          {loading ? "가입 중..." : "회원가입"}
-        </button>
-      </form>
+          <button
+            type="submit"
+            className="signup-btn"
+            disabled={loading || !email || !password || !confirmPassword}
+          >
+            {loading ? "가입 중..." : "가입"}
+          </button>
 
-      <p className="auth-link">
-        이미 계정이 있으신가요? <Link to="/login">로그인</Link>
-      </p>
+          {error && <p className="auth-error">{error}</p>}
+        </form>
+      </div>
+
+      <div className="auth-footer">
+        <p>
+          계정이 있으신가요? <Link to="/login">로그인</Link>
+        </p>
+      </div>
     </div>
   );
 };

@@ -16,7 +16,6 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      // TODO: 실제 로그인 API 연동
       localStorage.setItem("accessToken", "dummy-token");
       navigate("/main");
     } catch (err) {
@@ -27,36 +26,54 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="auth-container">
-      <h2 className="auth-title">로그인</h2>
+    <div className="ig-auth-wrapper">
+      <div className="ig-auth-box">
+        <h1 className="ig-logo-text">Archive</h1>
 
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="이메일"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <form className="ig-auth-form" onSubmit={handleSubmit}>
+          <div className="ig-input-group">
+            <input
+              type="email"
+              placeholder="전화번호, 사용자 이름 또는 이메일"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
 
-        <input
-          type="password"
-          placeholder="비밀번호"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+          <div className="ig-input-group">
+            <input
+              type="password"
+              placeholder="비밀번호"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
 
-        {error && <p className="auth-error">{error}</p>}
+          <button
+            type="submit"
+            className="ig-submit-btn"
+            disabled={loading || !email || !password}
+          >
+            {loading ? "로그인 중..." : "로그인"}
+          </button>
 
-        <button type="submit" disabled={loading}>
-          {loading ? "로그인 중..." : "로그인"}
-        </button>
-      </form>
+          {error && <p className="ig-auth-error">{error}</p>}
+        </form>
 
-      <p className="auth-link">
-        계정이 없으신가요? <Link to="/signup">회원가입</Link>
-      </p>
+        <div className="ig-divider">
+          <div className="ig-line"></div>
+          <div className="ig-text">또는</div>
+          <div className="ig-line"></div>
+        </div>
+      </div>
+
+      <div className="ig-auth-footer">
+        <p>
+          계정이 없으신가요? <Link to="/signup">가입하기</Link>
+        </p>
+      </div>
     </div>
   );
 };

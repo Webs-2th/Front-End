@@ -50,10 +50,6 @@
   color: #8e8e8e;
 }
 
-.comment-date {
-  /* 날짜는 그냥 왼쪽에 둠 */
-}
-
 /* ★ 3. 수정/삭제 버튼 (오른쪽 상단 고정) ★ */
 .comment-actions {
   position: absolute; /* 둥둥 띄워서 배치를 자유롭게 함 */

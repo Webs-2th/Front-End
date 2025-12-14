@@ -1,58 +1,135 @@
-.auth-container {
-  max-width: 400px;
-  margin: 120px auto;
-  padding: 32px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  text-align: center;
-  background-color: #fff;
-}
-
-.auth-title {
-  margin-bottom: 24px;
-}
-
-.auth-form {
+.ig-auth-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #fafafa;
+  padding: 20px;
 }
 
-.auth-form input {
-  padding: 10px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.ig-auth-box {
+  background-color: white;
+  border: 1px solid #dbdbdb;
+  width: 100%;
+  max-width: 350px;
+  padding: 40px;
+  text-align: center;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
-.auth-form button {
-  margin-top: 8px;
-  padding: 12px;
-  font-size: 15px;
-  font-weight: bold;
-  background-color: #222;
-  color: #fff;
+.ig-logo-text {
+  font-family: "Grand Hotel", cursive;
+  font-size: 50px;
+  margin: 0 0 30px 0;
+  color: #262626;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+
+.ig-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ig-auth-form input {
+  width: 100%;
+  padding: 9px 8px;
+  font-size: 12px;
+  border: 1px solid #dbdbdb;
+  background-color: #fafafa;
+  border-radius: 3px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.ig-auth-form input:focus {
+  border: 1px solid #a8a8a8;
+}
+
+/* ★ 버튼 색상 변경 (#f6e4c1) ★ */
+.ig-submit-btn {
+  margin-top: 10px;
+  background-color: #f6e4c1; /* 요청하신 베이지색 */
+  color: #262626; /* 글자색을 진한 회색으로 변경 (흰색은 안 보임) */
   border: none;
   border-radius: 4px;
+  padding: 7px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.ig-submit-btn:disabled {
+  background-color: #f6e4c1; /* 배경색 유지 */
+  opacity: 0.5; /* 대신 투명하게 흐리게 처리 */
+  cursor: default;
+}
+
+.ig-auth-error {
+  color: #ed4956;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.ig-divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.ig-line {
+  flex: 1;
+  height: 1px;
+  background-color: #dbdbdb;
+}
+
+.ig-text {
+  margin: 0 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8e8e8e;
+}
+
+.ig-facebook-login {
+  background: none;
+  border: none;
+  color: #385185;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.ig-forgot-password {
+  font-size: 12px;
+  color: #00376b;
   cursor: pointer;
 }
 
-.auth-form button:disabled {
-  background-color: #aaa;
-  cursor: not-allowed;
-}
-
-.auth-error {
-  color: red;
-  font-size: 13px;
-}
-
-.auth-link {
-  margin-top: 16px;
+.ig-auth-footer {
+  background-color: white;
+  border: 1px solid #dbdbdb;
+  width: 100%;
+  max-width: 350px;
+  padding: 20px;
+  text-align: center;
   font-size: 14px;
+  box-sizing: border-box;
 }
 
-.auth-link a {
-  color: #222;
-  font-weight: bold;
+.ig-auth-footer p {
+  margin: 0;
+}
+
+.ig-auth-footer a {
+  color: #0095f6; /* 링크 색은 파란색 유지 (혹은 원하면 변경 가능) */
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 5px;
 }
