@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { authAPI } from "../../api/api"; // api import
 import "./SignupPage.css";
 
 const SignupPage = () => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
+  const [nickname, setNickname] = useState(""); // 닉네임 상태 추가 (API 필수값)
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -20,14 +23,33 @@ const SignupPage = () => {
       return;
     }
 
+    // API 명세: 비밀번호 최소 8자 (필요시 프론트 유효성 검사 추가)
+    if (password.length < 8) {
+      setError("비밀번호는 8자 이상이어야 합니다.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // TODO: 회원가입 + 이메일 인증 API 연동
-      alert("회원가입이 완료되었습니다. 로그인해주세요.");
+      // 1. 회원가입 API 호출
+      // 명세서 requestBody: { email, password, nickname }
+      await authAPI.register({
+        email,
+        password,
+        nickname,
+      });
+
+      alert("회원가입이 완료되었습니다! 로그인해주세요.");
       navigate("/login");
     } catch (err) {
-      setError("회원가입에 실패했습니다.");
+      console.error(err);
+      // 백엔드 에러 메시지 처리 (409: 중복 등)
+      if (err.response && err.response.status === 409) {
+        setError("이미 사용 중인 이메일이나 닉네임입니다.");
+      } else {
+        setError("회원가입에 실패했습니다. 다시 시도해주세요.");
+      }
     } finally {
       setLoading(false);
     }
@@ -36,7 +58,6 @@ const SignupPage = () => {
   return (
     <div className="ig-auth-wrapper">
       <div className="ig-auth-box">
-        {/* 로고: 로그인 페이지와 통일하려면 'Archive'로 변경 가능 */}
         <h1 className="ig-logo-text">Archive</h1>
 
         <h2 className="ig-sub-text">
@@ -44,6 +65,7 @@ const SignupPage = () => {
         </h2>
 
         <form className="ig-auth-form" onSubmit={handleSubmit}>
+          {/* 이메일 입력 */}
           <input
             type="email"
             placeholder="이메일"
@@ -52,6 +74,16 @@ const SignupPage = () => {
             required
           />
 
+          {/* 닉네임 입력 (추가됨) */}
+          <input
+            type="text"
+            placeholder="사용자 이름 (닉네임)"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            required
+          />
+
+          {/* 비밀번호 입력 */}
           <input
             type="password"
             placeholder="비밀번호"
@@ -60,6 +92,7 @@ const SignupPage = () => {
             required
           />
 
+          {/* 비밀번호 확인 */}
           <input
             type="password"
             placeholder="비밀번호 확인"
@@ -71,7 +104,9 @@ const SignupPage = () => {
           <button
             type="submit"
             className="ig-submit-btn"
-            disabled={loading || !email || !password || !confirmPassword}
+            disabled={
+              loading || !email || !nickname || !password || !confirmPassword
+            }
           >
             {loading ? "가입 중..." : "가입"}
           </button>

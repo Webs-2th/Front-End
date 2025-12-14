@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { authAPI, setCookie } from "../../api/api"; // api와 쿠키 함수 import
 import "./LoginPage.css";
 
 const LoginPage = () => {
@@ -16,10 +17,24 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      localStorage.setItem("accessToken", "dummy-token");
+      // 1. API 로그인 요청
+      const response = await authAPI.login({ email, password });
+
+      // 2. 응답에서 토큰 추출 (명세서: accessToken)
+      const { accessToken, user } = response.data;
+
+      // 3. 쿠키에 토큰 저장 (7일간 유지)
+      setCookie("accessToken", accessToken, 7);
+
+      // (선택) 사용자 닉네임 환영 메시지 등 필요하면 사용
+      console.log(`${user.nickname}님 로그인 성공`);
+
+      // 4. 메인으로 이동
       navigate("/main");
     } catch (err) {
-      setError("로그인에 실패했습니다.");
+      console.error(err);
+      // 에러 메시지 처리 (401 등)
+      setError("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
     } finally {
       setLoading(false);
     }
