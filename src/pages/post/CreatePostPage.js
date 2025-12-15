@@ -16,7 +16,7 @@ const CreatePostPage = () => {
   const [tags, setTags] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 이미지 주소 처리 헬퍼 함수
+  // 이미지 주소 처리 헬퍼 함수 (src="" 경고 방지)
   const getImageUrl = (url) => {
     if (!url) return null;
     if (url.startsWith("data:")) return url; // 미리보기용 Data URI는 그대로
@@ -35,7 +35,7 @@ const CreatePostPage = () => {
 
           setContent(post.body);
 
-          // 태그 데이터 안전하게 처리
+          // 태그 데이터 안전하게 처리 (배열/문자열 모두 대응)
           let safeTags = [];
           if (Array.isArray(post.tags)) {
             safeTags = post.tags;
@@ -82,6 +82,7 @@ const CreatePostPage = () => {
       alert("내용을 입력해주세요.");
       return;
     }
+    // 새 글 작성인데 사진이 없으면 경고
     if (!id && !selectedFile) {
       alert("사진을 선택해주세요.");
       return;
@@ -112,7 +113,7 @@ const CreatePostPage = () => {
         title: content.slice(0, 20) || "게시글",
         body: content,
         place: "Unknown",
-        // ★ [핵심 수정] 백엔드 PostInput 스키마는 'imageUrl'을 요구합니다. (url -> imageUrl 변경)
+        // ★ [핵심 수정] 백엔드 PostInput 스키마에 맞춰 'imageUrl' 키 사용 (url -> imageUrl)
         images: [{ imageUrl: finalImageUrl }],
         tags: tagArray,
       };
@@ -132,7 +133,7 @@ const CreatePostPage = () => {
       console.error("업로드 실패:", error);
       // 에러 메시지 상세 출력 (디버깅용)
       if (error.response && error.response.status === 422) {
-        alert("입력 형식이 잘못되었습니다. (422 Error)");
+        alert("입력 형식이 잘못되었습니다. (422 Error - imageUrl 확인 필요)");
       } else {
         alert("실패했습니다. 다시 시도해주세요.");
       }
