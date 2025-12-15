@@ -1,8 +1,6 @@
 import axios from "axios";
 
-// ==============================================
-// 1. 쿠키 관리 헬퍼 함수
-// ==============================================
+//  1. 쿠키 관리 헬퍼 함수
 
 // 쿠키 저장 (기본 7일)
 export const setCookie = (name, value, days = 7) => {
@@ -24,9 +22,8 @@ export const removeCookie = (name) => {
   document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
 };
 
-// ==============================================
 // 2. Axios 인스턴스 생성 (기본 설정)
-// ==============================================
+
 const api = axios.create({
   baseURL: "http://localhost:4000/api/v1", // 백엔드 서버 주소
   headers: {
@@ -34,9 +31,8 @@ const api = axios.create({
   },
 });
 
-// ==============================================
-// ★ 3. 요청 인터셉터 (Request Interceptor) - 수정됨 ★
-// ==============================================
+// 3. 요청 인터셉터 (Request Interceptor)
+
 // API 요청을 보낼 때마다 토큰을 찾아 헤더에 심어줍니다.
 api.interceptors.request.use(
   (config) => {
@@ -60,9 +56,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ==============================================
 // 4. API 함수 정의 (Swagger 명세 기준)
-// ==============================================
 
 /**
  * [Auth] 인증 관련
@@ -91,7 +85,7 @@ export const postAPI = {
   // 게시글 작성
   createPost: (data) => api.post("/posts", data),
 
-  // ★ 상세 페이지용 (기존 getPostDetail과 동일)
+  // 상세 페이지용 (기존 getPostDetail과 동일)
   getPostById: (id) => api.get(`/posts/${id}`),
 
   // 게시글 상세 조회
@@ -103,8 +97,8 @@ export const postAPI = {
   // 게시글 삭제
   deletePost: (postId) => api.delete(`/posts/${postId}`),
 
-  // ★ 추가: 좋아요/좋아요 취소 토글 API
-  togglePostLike: (postId) => api.post(`/posts/${postId}/like-toggle`),
+  // ★ [수정됨] 스웨거 명세에 맞춘 좋아요 토글 API 경로
+  togglePostLike: (postId) => api.post(`/posts/${postId}/likes/toggle`),
 };
 
 /**

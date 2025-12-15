@@ -15,14 +15,13 @@ const BottomNav = () => {
   if (
     location.pathname === "/login" ||
     location.pathname === "/signup" ||
-    isPostDetailPage // ★ 이 조건이 추가되어야 함!
+    isPostDetailPage
   ) {
     return null;
   }
 
   return (
     <nav className="bottom-nav">
-      {/* ... 기존 코드 그대로 ... */}
       <div
         className={`nav-item ${location.pathname === "/main" ? "active" : ""}`}
         onClick={() => navigate("/main")}
