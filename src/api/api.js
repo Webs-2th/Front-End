@@ -79,7 +79,10 @@ export const postAPI = {
   // 게시글 작성 ({ title, body, place, images: [], tags: [] })
   createPost: (data) => api.post("/posts", data),
 
-  // 게시글 상세 조회
+  // ★ [중요] 상세 페이지에서 사용하는 함수 이름 추가 (기존 getPostDetail과 기능 동일)
+  getPostById: (id) => api.get(`/posts/${id}`),
+
+  // 게시글 상세 조회 (기존 코드 유지)
   getPostDetail: (postId) => api.get(`/posts/${postId}`),
 
   // 게시글 수정

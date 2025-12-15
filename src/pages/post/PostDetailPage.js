@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { postAPI, authAPI, commentAPI } from "../../api/api";
 import CommentSection from "../../components/CommentSection";
 import PostOptionMenu from "./PostOptionMenu";
 import "./PostDetailPage.css";
@@ -7,122 +8,167 @@ import "./PostDetailPage.css";
 const PostDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [post, setPost] = useState(null);
-  const [showOptions, setShowOptions] = useState(false); // 메뉴 표시 여부
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showOptions, setShowOptions] = useState(false);
 
   const commentInputRef = useRef(null);
 
-  // 현재 로그인한 사용자 (가정)
-  const currentUser = {
-    username: "um_chwoo",
+  // 데이터 불러오기
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [postRes, userRes] = await Promise.all([
+          postAPI.getPostById(id),
+          authAPI.getMe().catch(() => ({ data: null })),
+        ]);
+        setPost(postRes.data);
+        setCurrentUser(userRes.data);
+      } catch (error) {
+        console.error("데이터 로딩 실패:", error);
+        alert("게시물을 불러올 수 없습니다.");
+        navigate("/main");
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) fetchData();
+  }, [id, navigate]);
+
+  // 이미지 URL 처리
+  const getImageUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    if (url.startsWith("data:image")) return url;
+    const path = url.startsWith("/") ? url : `/${url}`;
+    return `http://localhost:4000${path}`;
   };
 
-  useEffect(() => {
-    const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
-    const targetPost = savedPosts.find((p) => p.id.toString() === id);
-    setPost(targetPost);
-  }, [id]);
-
-  // 데이터 업데이트 함수 (좋아요/댓글 등)
-  const updatePostData = (newPostData) => {
-    const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
-    const updatedPosts = savedPosts.map((p) =>
-      p.id === newPostData.id ? newPostData : p
-    );
-    localStorage.setItem("posts", JSON.stringify(updatedPosts));
-    setPost(newPostData);
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    return dateString.split("T")[0];
   };
 
   const toggleLike = () => {
     if (!post) return;
     const isLiked = !post.isLiked;
-    updatePostData({
+    setPost({
       ...post,
       isLiked: isLiked,
       likes: isLiked ? (post.likes || 0) + 1 : (post.likes || 0) - 1,
     });
   };
 
-  const handleFocusInput = () => {
-    commentInputRef.current?.focus();
-  };
+  // ============================================
+  // ★ 댓글 기능 구현 (API 연동 + 화면 즉시 반영) ★
+  // ============================================
 
-  // --- 댓글 관련 함수들 ---
-  const handleAddComment = (text) => {
-    const newComment = {
-      id: Date.now(),
-      username: currentUser.username,
-      text: text,
-      date: new Date().toISOString().split("T")[0],
-    };
-    updatePostData({
-      ...post,
-      comments: [...(post.comments || []), newComment],
-    });
-  };
+  // 1. 댓글 작성 (수정됨: 리패칭 대신 상태 직접 업데이트)
+  const handleAddComment = async (text) => {
+    try {
+      // 1. 서버에 전송하고 결과(생성된 댓글 정보)를 받음
+      const response = await commentAPI.createComment(id, { content: text });
 
-  const handleDeleteComment = (commentId) => {
-    if (window.confirm("댓글을 삭제하시겠습니까?")) {
-      const filtered = (post.comments || []).filter((c) => c.id !== commentId);
-      updatePostData({ ...post, comments: filtered });
+      // 2. 화면에 표시할 새 댓글 객체 생성
+      // 서버가 준 데이터에 '작성자 정보(currentUser)'를 강제로 넣어야 바로 닉네임이 보임
+      const newComment = {
+        ...response.data,
+        id: response.data?.id || Date.now(), // 혹시 ID 안오면 임시 ID
+        content: text,
+        user: currentUser, // ★ 중요: 이게 있어야 방금 쓴 댓글에 내 프사/닉네임이 뜸
+        created_at: new Date().toISOString(),
+      };
+
+      // 3. 기존 댓글 목록 뒤에 붙이기
+      setPost((prev) => ({
+        ...prev,
+        comments: [...(prev.comments || []), newComment],
+      }));
+    } catch (error) {
+      console.error("댓글 작성 실패:", error);
+      alert("댓글 작성에 실패했습니다.");
     }
   };
 
-  const handleUpdateComment = (commentId, newText) => {
-    const updated = (post.comments || []).map((c) =>
-      c.id === commentId ? { ...c, text: newText } : c
-    );
-    updatePostData({ ...post, comments: updated });
+  // 2. 댓글 삭제
+  const handleDeleteComment = async (commentId) => {
+    if (window.confirm("댓글을 삭제하시겠습니까?")) {
+      try {
+        await commentAPI.deleteComment(commentId);
+
+        // 화면에서 즉시 제거
+        setPost((prev) => ({
+          ...prev,
+          comments: prev.comments.filter((c) => c.id !== commentId),
+        }));
+      } catch (error) {
+        console.error("댓글 삭제 실패:", error);
+        alert("댓글 삭제에 실패했습니다.");
+      }
+    }
   };
 
-  // --- 게시물 수정/삭제 기능 ---
+  // 3. 댓글 수정
+  const handleUpdateComment = async (commentId, newText) => {
+    try {
+      await commentAPI.updateComment(commentId, { content: newText });
 
-  // 1. 수정 버튼 클릭 시 -> 수정 페이지로 이동
+      // 화면에서 즉시 내용 변경
+      setPost((prev) => ({
+        ...prev,
+        comments: prev.comments.map((c) =>
+          c.id === commentId ? { ...c, content: newText } : c
+        ),
+      }));
+    } catch (error) {
+      console.error("댓글 수정 실패:", error);
+      alert("댓글 수정에 실패했습니다.");
+    }
+  };
+
+  // ============================================
+
   const handleEditPost = () => {
     navigate(`/posts/edit/${id}`);
     setShowOptions(false);
   };
 
-  // 2. 삭제 버튼 클릭 시 -> 바로 삭제
-  const handleDeletePost = () => {
+  const handleDeletePost = async () => {
     if (window.confirm("정말로 이 게시물을 삭제하시겠습니까?")) {
-      const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
-      const filteredPosts = savedPosts.filter((p) => p.id.toString() !== id);
-      localStorage.setItem("posts", JSON.stringify(filteredPosts));
-
-      alert("삭제되었습니다.");
-      navigate("/main"); // 메인으로 이동
+      try {
+        await postAPI.deletePost(id);
+        alert("삭제되었습니다.");
+        navigate("/main", { replace: true });
+      } catch (error) {
+        console.error("삭제 실패:", error);
+        alert("실패했습니다.");
+      }
     }
     setShowOptions(false);
   };
 
-  // 3. 더보기(...) 버튼 클릭
   const handleMoreClick = () => {
-    // 내 글일 때만 메뉴 열기
-    if (post.author?.username === currentUser.username) {
+    if (currentUser?.nickname === post.user?.nickname) {
       setShowOptions(true);
     } else {
       alert("본인의 게시물만 수정/삭제할 수 있습니다.");
     }
   };
 
-  if (!post) return <div className="loading">로딩 중...</div>;
+  if (loading) return <div className="loading">로딩 중...</div>;
+  if (!post) return <div className="error">게시물이 존재하지 않습니다.</div>;
 
   return (
     <div className="post-detail-page">
-      {/* 중요: style={{ position: 'relative' }}를 추가했습니다.
-        그래야 PostOptionMenu가 이 헤더를 기준으로 위치를 잡습니다.
-      */}
       <header className="detail-header" style={{ position: "relative" }}>
         <button className="icon-btn back" onClick={() => navigate(-1)}></button>
         <span className="header-title">게시물</span>
-
-        {/* 더보기 버튼 */}
-        <button className="icon-btn more" onClick={handleMoreClick}></button>
-
-        {/* 메뉴 컴포넌트를 헤더 안에 배치했습니다.
-           showOptions가 true일 때만 ...버튼 아래에 나타납니다.
-        */}
+        {currentUser?.nickname === post.user?.nickname && (
+          <button className="icon-btn more" onClick={handleMoreClick}></button>
+        )}
         {showOptions && (
           <PostOptionMenu
             onEdit={handleEditPost}
@@ -136,18 +182,24 @@ const PostDetailPage = () => {
         <div className="user-info">
           <img
             src={
-              post.author?.profileImg ||
+              post.user?.profile_image_url ||
               "https://cdn-icons-png.flaticon.com/512/847/847969.png"
             }
             alt="profile"
             className="profile-img"
           />
-          <span className="username">{post.author?.username || "익명"}</span>
+          <span className="username">{post.user?.nickname || "익명"}</span>
         </div>
 
-        {post.image && (
+        {post.images && post.images.length > 0 && (
           <div className="post-image-container">
-            <img src={post.image} alt="detail" />
+            <img
+              src={getImageUrl(post.images[0].url)}
+              alt="detail"
+              onError={(e) => {
+                e.target.src = "https://via.placeholder.com/300?text=No+Image";
+              }}
+            />
           </div>
         )}
 
@@ -158,7 +210,7 @@ const PostDetailPage = () => {
           ></button>
           <button
             className="icon-btn comment"
-            onClick={handleFocusInput}
+            onClick={() => commentInputRef.current?.focus()}
           ></button>
         </div>
 
@@ -171,13 +223,13 @@ const PostDetailPage = () => {
 
         <div className="caption-section">
           <span className="caption-text" style={{ marginLeft: 0 }}>
-            {post.content}
+            {post.body}
           </span>
         </div>
 
-        {post.tags && (
+        {post.tags && post.tags.length > 0 && (
           <div className="tags-section">
-            {post.tags.split(" ").map((tag, idx) => (
+            {post.tags.map((tag, idx) => (
               <span key={idx} className="tag-item">
                 {tag.startsWith("#") ? tag : `#${tag}`}
               </span>
@@ -185,8 +237,9 @@ const PostDetailPage = () => {
           </div>
         )}
 
-        <div className="date-info">{post.date}</div>
+        <div className="date-info">{formatDate(post.published_at)}</div>
 
+        {/* 댓글 섹션에 기능 함수 전달 */}
         <CommentSection
           comments={post.comments || []}
           currentUser={currentUser}
@@ -196,8 +249,6 @@ const PostDetailPage = () => {
           inputRef={commentInputRef}
         />
       </div>
-
-      {/* 기존 하단 모달(Bottom Sheet) 코드는 삭제했습니다 */}
     </div>
   );
 };
