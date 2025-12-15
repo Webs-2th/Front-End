@@ -21,12 +21,26 @@ const PostDetailPage = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [postRes, userRes] = await Promise.all([
+        // 게시물 정보와 내 정보를 동시에 가져옴
+        const [postRes, userRes] = await Promise.allSettled([
           postAPI.getPostById(id),
-          authAPI.getMe().catch(() => ({ data: null })),
+          authAPI.getMe(),
         ]);
-        setPost(postRes.data);
-        setCurrentUser(userRes.data);
+
+        // 1. 게시물 데이터 설정
+        if (postRes.status === "fulfilled") {
+          setPost(postRes.value.data);
+          // 디버깅용 로그: 브라우저 콘솔(F12)에서 확인해보세요!
+          console.log("상세 게시물 데이터:", postRes.value.data);
+        } else {
+          throw new Error("게시물을 불러오지 못했습니다.");
+        }
+
+        // 2. 내 정보 설정
+        if (userRes.status === "fulfilled" && userRes.value.data) {
+          setCurrentUser(userRes.value.data);
+          console.log("내 정보:", userRes.value.data);
+        }
       } catch (error) {
         console.error("데이터 로딩 실패:", error);
         alert("게시물을 불러올 수 없습니다.");
@@ -38,7 +52,29 @@ const PostDetailPage = () => {
     if (id) fetchData();
   }, [id, navigate]);
 
-  // 이미지 URL 처리
+  // ★ [핵심 수정] 이름 표시 로직 강화
+  const getDisplayName = (user, authorId) => {
+    // 1순위: 게시물 안에 유저 정보가 제대로 들어있는 경우
+    if (user && (user.nickname || user.username || user.name)) {
+      return user.nickname || user.username || user.name;
+    }
+
+    // 2순위: 유저 정보가 없어도, 작성자 ID가 '나(currentUser)'와 같다면 내 닉네임 표시
+    if (currentUser && authorId) {
+      // 숫자/문자 형식이 다를 수 있으므로 String으로 변환해 비교
+      if (String(currentUser.id) === String(authorId)) {
+        return currentUser.nickname || currentUser.username || "나";
+      }
+    }
+
+    // 3순위: 이메일이라도 있으면 앞부분 표시
+    if (user && user.email) {
+      return user.email.split("@")[0];
+    }
+
+    return "익명 사용자";
+  };
+
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -62,27 +98,17 @@ const PostDetailPage = () => {
     });
   };
 
-  // ============================================
-  // ★ 댓글 기능 구현 (API 연동 + 화면 즉시 반영) ★
-  // ============================================
-
-  // 1. 댓글 작성 (수정됨: 리패칭 대신 상태 직접 업데이트)
+  // --- 댓글 관련 함수들은 기존과 동일 ---
   const handleAddComment = async (text) => {
     try {
-      // 1. 서버에 전송하고 결과(생성된 댓글 정보)를 받음
       const response = await commentAPI.createComment(id, { content: text });
-
-      // 2. 화면에 표시할 새 댓글 객체 생성
-      // 서버가 준 데이터에 '작성자 정보(currentUser)'를 강제로 넣어야 바로 닉네임이 보임
       const newComment = {
         ...response.data,
-        id: response.data?.id || Date.now(), // 혹시 ID 안오면 임시 ID
+        id: response.data?.id || Date.now(),
         content: text,
-        user: currentUser, // ★ 중요: 이게 있어야 방금 쓴 댓글에 내 프사/닉네임이 뜸
+        user: currentUser, // 여기서 내 정보를 넣어야 댓글에 바로 닉네임이 뜸
         created_at: new Date().toISOString(),
       };
-
-      // 3. 기존 댓글 목록 뒤에 붙이기
       setPost((prev) => ({
         ...prev,
         comments: [...(prev.comments || []), newComment],
@@ -93,30 +119,23 @@ const PostDetailPage = () => {
     }
   };
 
-  // 2. 댓글 삭제
   const handleDeleteComment = async (commentId) => {
     if (window.confirm("댓글을 삭제하시겠습니까?")) {
       try {
         await commentAPI.deleteComment(commentId);
-
-        // 화면에서 즉시 제거
         setPost((prev) => ({
           ...prev,
           comments: prev.comments.filter((c) => c.id !== commentId),
         }));
       } catch (error) {
         console.error("댓글 삭제 실패:", error);
-        alert("댓글 삭제에 실패했습니다.");
       }
     }
   };
 
-  // 3. 댓글 수정
   const handleUpdateComment = async (commentId, newText) => {
     try {
       await commentAPI.updateComment(commentId, { content: newText });
-
-      // 화면에서 즉시 내용 변경
       setPost((prev) => ({
         ...prev,
         comments: prev.comments.map((c) =>
@@ -125,36 +144,39 @@ const PostDetailPage = () => {
       }));
     } catch (error) {
       console.error("댓글 수정 실패:", error);
-      alert("댓글 수정에 실패했습니다.");
     }
   };
 
-  // ============================================
-
+  // --- 게시글 수정/삭제 ---
   const handleEditPost = () => {
     navigate(`/posts/edit/${id}`);
     setShowOptions(false);
   };
 
   const handleDeletePost = async () => {
-    if (window.confirm("정말로 이 게시물을 삭제하시겠습니까?")) {
+    if (window.confirm("정말로 삭제하시겠습니까?")) {
       try {
         await postAPI.deletePost(id);
-        alert("삭제되었습니다.");
         navigate("/main", { replace: true });
       } catch (error) {
-        console.error("삭제 실패:", error);
-        alert("실패했습니다.");
+        alert("삭제 실패");
       }
     }
     setShowOptions(false);
   };
 
   const handleMoreClick = () => {
-    if (currentUser?.nickname === post.user?.nickname) {
+    const isMyPost =
+      (currentUser?.id && post.user?.id && currentUser.id === post.user.id) ||
+      currentUser?.nickname === post.user?.nickname ||
+      (post.user_id &&
+        currentUser?.id &&
+        String(post.user_id) === String(currentUser.id)); // ID 직접 비교 추가
+
+    if (isMyPost) {
       setShowOptions(true);
     } else {
-      alert("본인의 게시물만 수정/삭제할 수 있습니다.");
+      alert("권한이 없습니다.");
     }
   };
 
@@ -163,12 +185,18 @@ const PostDetailPage = () => {
 
   return (
     <div className="post-detail-page">
-      <header className="detail-header" style={{ position: "relative" }}>
+      <header className="detail-header">
         <button className="icon-btn back" onClick={() => navigate(-1)}></button>
         <span className="header-title">게시물</span>
-        {currentUser?.nickname === post.user?.nickname && (
+
+        {/* 더보기 버튼 표시 조건 강화 */}
+        {((currentUser?.id &&
+          post.user_id &&
+          String(currentUser.id) === String(post.user_id)) ||
+          post.user?.nickname === currentUser?.nickname) && (
           <button className="icon-btn more" onClick={handleMoreClick}></button>
         )}
+
         {showOptions && (
           <PostOptionMenu
             onEdit={handleEditPost}
@@ -183,12 +211,17 @@ const PostDetailPage = () => {
           <img
             src={
               post.user?.profile_image_url ||
+              currentUser?.profile_image_url || // 작성자 프사 없으면 내 프사라도 (내 글일 경우)
               "https://cdn-icons-png.flaticon.com/512/847/847969.png"
             }
             alt="profile"
             className="profile-img"
           />
-          <span className="username">{post.user?.nickname || "익명"}</span>
+
+          {/* ★ 여기가 핵심: 작성자 ID(user_id)까지 넘겨서 비교 ★ */}
+          <span className="username">
+            {getDisplayName(post.user, post.user_id || post.userId)}
+          </span>
         </div>
 
         {post.images && post.images.length > 0 && (
@@ -197,12 +230,13 @@ const PostDetailPage = () => {
               src={getImageUrl(post.images[0].url)}
               alt="detail"
               onError={(e) => {
-                e.target.src = "https://via.placeholder.com/300?text=No+Image";
+                e.target.src = "https://via.placeholder.com/300";
               }}
             />
           </div>
         )}
 
+        {/* ... (이하 버튼, 캡션 등 기존 UI 유지) ... */}
         <div className="action-buttons">
           <button
             className={`icon-btn heart ${post.isLiked ? "liked" : ""}`}
@@ -239,7 +273,6 @@ const PostDetailPage = () => {
 
         <div className="date-info">{formatDate(post.published_at)}</div>
 
-        {/* 댓글 섹션에 기능 함수 전달 */}
         <CommentSection
           comments={post.comments || []}
           currentUser={currentUser}

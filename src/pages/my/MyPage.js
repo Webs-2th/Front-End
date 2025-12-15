@@ -7,10 +7,8 @@ const MyPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // 내 정보 상태 (백엔드 필드명에 맞춤: nickname, bio, profile_image_url)
   const [user, setUser] = useState(null);
 
-  // 수정 모드용 폼 데이터
   const [editForm, setEditForm] = useState({
     nickname: "",
     bio: "",
@@ -20,28 +18,39 @@ const MyPage = () => {
   const [myPosts, setMyPosts] = useState([]);
   const [myComments, setMyComments] = useState([]);
 
-  const [activeTab, setActiveTab] = useState("posts"); // 'posts' or 'comments'
+  const [activeTab, setActiveTab] = useState("posts");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // ★ 1. 데이터 불러오기 (내 정보, 내 글, 내 댓글)
+  // ★ 1. 데이터 불러오기 및 필터링
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // 병렬로 한 번에 요청
         const [userRes, postsRes, commentsRes] = await Promise.all([
-          authAPI.getMe(), // 내 프로필
-          userAPI.getMyPosts(), // 내가 쓴 글
-          userAPI.getMyComments(), // 내가 쓴 댓글
+          authAPI.getMe(),
+          userAPI.getMyPosts(),
+          userAPI.getMyComments(),
         ]);
 
         const userData = userRes.data;
         setUser(userData);
 
-        // API 응답 구조에 따라 .data.items 혹은 .data 처리
-        setMyPosts(postsRes.data.items || postsRes.data || []);
-        setMyComments(commentsRes.data.items || commentsRes.data || []);
+        // --- ★ 게시물 필터링 로직 추가 ★ ---
+        // 1. 서버에서 받은 원본 리스트
+        const rawPosts = postsRes.data.items || postsRes.data || [];
+        // 2. deleted_at(삭제일)이 '없는'(=null) 것만 남김
+        const validPosts = rawPosts.filter((post) => !post.deleted_at);
+        setMyPosts(validPosts);
+
+        // --- ★ 댓글 필터링 로직 추가 ★ ---
+        const rawComments = commentsRes.data.items || commentsRes.data || [];
+        // 2. deleted_at이 없고, 원본 게시글(post) 정보가 살아있는 것만 남김 (안전장치)
+        const validComments = rawComments.filter((comment) => {
+          // 댓글 자체가 삭제되지 않았고 && 게시글이 null이 아니어야 함
+          return !comment.deleted_at && comment.post !== null;
+        });
+        setMyComments(validComments);
       } catch (error) {
         console.error("마이페이지 로딩 실패:", error);
         alert("로그인이 필요하거나 정보를 불러올 수 없습니다.");
@@ -54,41 +63,35 @@ const MyPage = () => {
     fetchData();
   }, [navigate]);
 
-  // 이미지 주소 처리 함수 (URL 보정)
+  // 이미지 주소 처리 함수
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
-    if (url.startsWith("data:image")) return url; // base64
+    if (url.startsWith("data:image")) return url;
     const path = url.startsWith("/") ? url : `/${url}`;
     return `http://localhost:4000${path}`;
   };
 
   const goToDetail = (id) => {
+    // 만약 게시글 ID가 없으면 이동하지 않음 (예외 처리)
+    if (!id) return;
     navigate(`/posts/${id}`);
   };
 
-  // --- 프로필 수정 관련 ---
-
-  // 입력값 변경 핸들러
+  // ... (이하 프로필 수정 및 렌더링 코드는 기존과 동일) ...
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ★ 프로필 이미지 변경 (파일 선택 시 바로 업로드 -> URL 받기)
   const handleProfileImgChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     try {
       const formData = new FormData();
-      formData.append("image", file); // 백엔드가 'image'라는 필드명을 받는지 확인 필요
-
-      // 이미지 업로드 API 호출
+      formData.append("image", file);
       const res = await uploadAPI.uploadImage(formData);
-
-      // 업로드 된 이미지 주소를 폼 상태에 반영 (미리보기용)
-      // 백엔드가 { url: "..." } 형태로 준다고 가정
       const uploadedUrl = res.data.url;
       setEditForm((prev) => ({ ...prev, profile_image_url: uploadedUrl }));
     } catch (error) {
@@ -97,23 +100,18 @@ const MyPage = () => {
     }
   };
 
-  // 수정 버튼 클릭 시 초기값 세팅
   const startEditing = () => {
     setEditForm({
       nickname: user.nickname || "",
-      bio: user.bio || "", // intro 대신 bio 사용 (백엔드 스키마 확인)
+      bio: user.bio || "",
       profile_image_url: user.profile_image_url || "",
     });
     setIsEditing(true);
   };
 
-  // ★ 변경 내용 저장 (서버 전송)
   const saveProfile = async () => {
     try {
-      // API 호출: 내 정보 업데이트
       const res = await userAPI.updateMyProfile(editForm);
-
-      // 성공 시 화면 정보 갱신
       setUser(res.data);
       setIsEditing(false);
       alert("프로필이 수정되었습니다.");
@@ -128,7 +126,6 @@ const MyPage = () => {
 
   return (
     <div className="mypage">
-      {/* 1. 프로필 헤더 영역 */}
       <div className="profile-header">
         <div className="profile-img-container">
           <img
@@ -141,7 +138,6 @@ const MyPage = () => {
             }
             alt="profile"
             className="my-profile-img"
-            // 수정 모드일 때만 클릭해서 사진 변경 가능
             onClick={() => isEditing && fileInputRef.current.click()}
             style={{ cursor: isEditing ? "pointer" : "default" }}
           />
@@ -209,7 +205,6 @@ const MyPage = () => {
         </div>
       </div>
 
-      {/* 2. 탭 메뉴 */}
       <div className="profile-tabs">
         <div
           className={`tab-item ${activeTab === "posts" ? "active" : ""}`}
@@ -226,7 +221,6 @@ const MyPage = () => {
         </div>
       </div>
 
-      {/* 3. 컨텐츠 영역 */}
       <div className="profile-content">
         {activeTab === "posts" ? (
           <div className="posts-grid">
@@ -239,7 +233,6 @@ const MyPage = () => {
                   className="grid-item"
                   onClick={() => goToDetail(post.id)}
                 >
-                  {/* 대표 이미지 표시 */}
                   {post.images && post.images.length > 0 ? (
                     <img src={getImageUrl(post.images[0].url)} alt="post" />
                   ) : (
@@ -258,11 +251,10 @@ const MyPage = () => {
                 <div
                   key={comment.id || idx}
                   className="comment-row"
-                  onClick={() => goToDetail(comment.postId)} // 댓글 누르면 해당 게시물로 이동
+                  onClick={() => comment.post && goToDetail(comment.postId)}
                 >
-                  {/* 댓글 미리보기엔 게시물 썸네일은 보통 없거나 API가 줘야 함. 
-                      없으면 회색 박스 처리 */}
                   <div className="comment-thumb">
+                    {/* comment.post가 null이 아닐 때만 이미지 렌더링 */}
                     {comment.post?.images?.[0] ? (
                       <img
                         src={getImageUrl(comment.post.images[0].url)}
@@ -273,7 +265,6 @@ const MyPage = () => {
                     )}
                   </div>
                   <div className="comment-preview">
-                    {/* 댓글 내용 */}
                     <span className="comment-text-bold">{comment.content}</span>
                     <span className="comment-date-small">
                       {comment.created_at?.split("T")[0]}

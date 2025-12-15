@@ -120,7 +120,7 @@ const CreatePostPage = () => {
           <FiArrowLeft size={26} color="#262626" />
         </button>
 
-        <span className="header-title">{id ? "정보 수정" : "새 게시물"}</span>
+        <span className="header-title">{id ? "게시물 수정" : "새 게시물"}</span>
 
         <button
           className="submit-text-btn"

@@ -1,6 +1,8 @@
 import axios from "axios";
 
+// ==============================================
 // 1. 쿠키 관리 헬퍼 함수
+// ==============================================
 
 // 쿠키 저장 (기본 7일)
 export const setCookie = (name, value, days = 7) => {
@@ -26,23 +28,33 @@ export const removeCookie = (name) => {
 // 2. Axios 인스턴스 생성 (기본 설정)
 // ==============================================
 const api = axios.create({
-  baseURL: "http://localhost:4000/api/v1", // 백엔드 서버 주소 (Swagger 기준)
+  baseURL: "http://localhost:4000/api/v1", // 백엔드 서버 주소
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 // ==============================================
-// 3. 요청 인터셉터 (Request Interceptor)
+// ★ 3. 요청 인터셉터 (Request Interceptor) - 수정됨 ★
 // ==============================================
-// API 요청을 보낼 때마다 쿠키에서 토큰을 꺼내 헤더에 넣어줍니다.
+// API 요청을 보낼 때마다 토큰을 찾아 헤더에 심어줍니다.
 api.interceptors.request.use(
   (config) => {
-    // 변경점: localStorage 대신 getCookie 사용
-    const token = getCookie("accessToken");
+    // 1순위: 쿠키에서 토큰 찾기
+    let token = getCookie("accessToken");
+
+    // 2순위: 쿠키에 없으면 로컬스토리지에서 찾기 (비상용)
+    if (!token) {
+      token = localStorage.getItem("accessToken");
+    }
+
+    // 토큰이 발견되면 헤더에 Authorization 추가
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn("⚠️ API 요청에 토큰이 없습니다. (익명 처리될 수 있음)");
     }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -56,13 +68,13 @@ api.interceptors.request.use(
  * [Auth] 인증 관련
  */
 export const authAPI = {
-  // 회원가입 ({ email, password, nickname })
+  // 회원가입
   register: (data) => api.post("/auth/register", data),
 
-  // 이메일 인증 ({ token })
+  // 이메일 인증
   verifyEmail: (data) => api.post("/auth/verify-email", data),
 
-  // 로그인 ({ email, password })
+  // 로그인
   login: (data) => api.post("/auth/login", data),
 
   // 현재 로그인한 사용자 정보 조회 (내 정보)
@@ -73,16 +85,16 @@ export const authAPI = {
  * [Posts] 게시글 관련
  */
 export const postAPI = {
-  // 게시글 목록 조회 (쿼리 파라미터: cursor, limit, tag, userId, place)
+  // 게시글 목록 조회
   getPosts: (params) => api.get("/posts", { params }),
 
-  // 게시글 작성 ({ title, body, place, images: [], tags: [] })
+  // 게시글 작성
   createPost: (data) => api.post("/posts", data),
 
-  // ★ [중요] 상세 페이지에서 사용하는 함수 이름 추가 (기존 getPostDetail과 기능 동일)
+  // ★ 상세 페이지용 (기존 getPostDetail과 동일)
   getPostById: (id) => api.get(`/posts/${id}`),
 
-  // 게시글 상세 조회 (기존 코드 유지)
+  // 게시글 상세 조회
   getPostDetail: (postId) => api.get(`/posts/${postId}`),
 
   // 게시글 수정
@@ -100,7 +112,7 @@ export const commentAPI = {
   getComments: (postId, params) =>
     api.get(`/posts/${postId}/comments`, { params }),
 
-  // 댓글 작성 ({ content })
+  // 댓글 작성
   createComment: (postId, data) => api.post(`/posts/${postId}/comments`, data),
 
   // 댓글 수정
@@ -117,7 +129,7 @@ export const userAPI = {
   // 내 프로필 상세 조회
   getMyProfile: () => api.get("/users/me"),
 
-  // 내 프로필 수정 ({ nickname, bio, profileImageUrl })
+  // 내 프로필 수정
   updateMyProfile: (data) => api.patch("/users/me", data),
 
   // 내가 쓴 게시글 목록
@@ -134,11 +146,11 @@ export const userAPI = {
  * [Uploads] 파일 업로드 관련
  */
 export const uploadAPI = {
-  // 이미지 업로드 (formData 객체를 넘겨야 함)
+  // 이미지 업로드
   uploadImage: (formData) =>
     api.post("/uploads/images", formData, {
       headers: {
-        "Content-Type": "multipart/form-data", // 중요: 파일 업로드 시 헤더 변경
+        "Content-Type": "multipart/form-data",
       },
     }),
 };
