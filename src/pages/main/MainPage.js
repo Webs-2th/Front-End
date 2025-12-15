@@ -64,62 +64,53 @@ const MainPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // ★ 사용자 이름 표시 로직
+  // 사용자 이름 표시 로직
   const getDisplayName = (post) => {
-    // 1순위: post.user 객체 안에 닉네임이 있는 경우
-    if (post.user && post.user.nickname) {
-      return post.user.nickname;
-    }
-    // 2순위: post 객체 바로 아래에 nickname이 있는 경우
-    if (post.nickname) {
-      return post.nickname;
-    }
-    // 3순위: 로그인한 사용자가 작성자인 경우
+    if (post.user && post.user.nickname) return post.user.nickname;
+    if (post.nickname) return post.nickname;
     const authorId = post.user_id || post.userId;
     if (currentUser && authorId) {
       if (String(currentUser.id) === String(authorId)) {
         return currentUser.nickname || currentUser.username || "나";
       }
     }
-    // 4순위: 정보가 없으면 익명
     return "익명 사용자";
   };
 
   // 프로필 이미지 표시 로직
   const getProfileImage = (post) => {
-    // 1. 작성자 객체가 있고 프사가 있는 경우
     if (post.user && post.user.profile_image_url) {
       return getImageUrl(post.user.profile_image_url);
     }
-    // 2. 작성자가 '나'인 경우 내 프사 사용
     const authorId = post.user_id || post.userId;
     if (currentUser && String(currentUser.id) === String(authorId)) {
       return getImageUrl(currentUser.profile_image_url);
     }
-    // 3. 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
-  // ★ 좋아요 토글 기능 (API 연동)
+  // 좋아요 토글 기능
   const toggleLike = async (id) => {
     if (!currentUser) {
       alert("로그인이 필요합니다.");
       return;
     }
     try {
-      // 1. 서버 API 호출
       const response = await postAPI.togglePostLike(id);
       // 서버 응답: { liked: boolean, likesCount: integer }
       const { liked, likesCount } = response.data;
 
-      // 2. 로컬 상태 업데이트
       setPosts((prevPosts) =>
         prevPosts.map((post) => {
           if (post.id === id) {
             return {
               ...post,
-              isLiked: liked, // 프론트 상태 관리용
-              likes_count: likesCount, // 화면 표시용 (Swagger 필드명)
+              // 화면 갱신을 위해 모든 관련 필드를 최신 상태로 덮어씌움
+              isLiked: liked,
+              liked: liked,
+              is_liked: liked,
+              likes_count: likesCount,
+              likesCount: likesCount,
             };
           }
           return post;
@@ -157,10 +148,12 @@ const MainPage = () => {
       )}
 
       {posts.map((post) => {
-        // ★ 변수 할당: Swagger(snake_case) vs CamelCase 대응
-        const isLiked = post.isLiked || post.liked || false;
-        // likes_count가 있으면 쓰고, 없으면 likesCount, 정 없으면 0
-        const likeCount = post.likes_count ?? post.likesCount ?? 0;
+        // 3가지 변수명 모두 체크
+        const isLiked = post.isLiked || post.liked || post.is_liked || false;
+
+        // 문법 에러 수정됨 (?? 연산자 통일)
+        const likeCount =
+          post.likes_count ?? post.likesCount ?? post.likes ?? 0;
         const commentCount = post.comment_count ?? post.commentCount ?? 0;
 
         return (
@@ -202,7 +195,6 @@ const MainPage = () => {
                     toggleLike(post.id);
                   }}
                 ></button>
-                {/* 좋아요 숫자 표시 */}
                 <span className="count-text">{likeCount}</span>
               </div>
 
@@ -211,12 +203,11 @@ const MainPage = () => {
                   className="icon-btn comment"
                   onClick={() => goToDetail(post.id)}
                 ></button>
-                {/* 댓글 숫자 표시 */}
                 <span className="count-text">{commentCount}</span>
               </div>
             </div>
 
-            {/* 내용 및 해시태그 */}
+            {/* 내용 */}
             <div className="post-content">
               <div className="caption">
                 <span className="caption-username">{getDisplayName(post)}</span>
@@ -229,7 +220,7 @@ const MainPage = () => {
                 </span>
               </div>
 
-              {/* 해시태그 영역 */}
+              {/* 해시태그 */}
               {getSafeTags(post.tags).length > 0 && (
                 <div
                   className="tags"
