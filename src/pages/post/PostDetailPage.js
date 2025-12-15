@@ -113,18 +113,23 @@ const PostDetailPage = () => {
   };
 
   // --------------------
-  // 프로필 이미지 처리
+  // ★ 프로필 이미지 결정 로직 (수정됨)
   // --------------------
   const getProfileImage = (postObj) => {
-    if (!postObj)
-      return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+    // 1. 내가 쓴 글이라면 내 최신 프사 우선
+    const authorId = postObj.user_id || postObj.userId;
+    if (currentUser && String(currentUser.id) === String(authorId)) {
+      if (currentUser.profile_image_url) {
+        return getImageUrl(currentUser.profile_image_url);
+      }
+    }
+
+    // 2. 남이 쓴 글이라면 게시글 정보 사용
     if (postObj.user && postObj.user.profile_image_url) {
       return getImageUrl(postObj.user.profile_image_url);
     }
-    const authorId = postObj.user_id || postObj.userId;
-    if (currentUser && String(currentUser.id) === String(authorId)) {
-      return getImageUrl(currentUser.profile_image_url);
-    }
+
+    // 3. 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
@@ -320,11 +325,15 @@ const PostDetailPage = () => {
 
       <div className="detail-content">
         <div className="user-info">
-          {/* ★ 이미지 태그로 복구됨 ★ */}
+          {/* ★ 프로필 이미지 표시 (onError 추가) */}
           <img
             src={getProfileImage(post)}
             alt="profile"
             className="profile-img"
+            onError={(e) => {
+              e.target.src =
+                "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+            }}
           />
           <span className="username">{getDisplayName(post)}</span>
         </div>

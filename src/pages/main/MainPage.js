@@ -60,7 +60,6 @@ const MainPage = () => {
             .filter((post) => !post.deleted_at)
             .map((post) => ({
               ...post,
-              // ✅ localStorage 기준 좋아요 상태 복원
               isLiked: likedPostIds.includes(post.id),
             }));
 
@@ -95,17 +94,24 @@ const MainPage = () => {
   };
 
   // --------------------
-  // 프로필 이미지 처리
+  // ★ 프로필 이미지 결정 로직 (수정됨)
   // --------------------
   const getProfileImage = (post) => {
+    // 1. 내가 쓴 글이라면, 현재 로그인한 유저의 최신 프사(currentUser)를 우선 사용
+    // (마이페이지에서 방금 바꿨을 때 즉시 반영되게 하기 위함)
+    const authorId = post.user_id || post.userId;
+    if (currentUser && String(currentUser.id) === String(authorId)) {
+      if (currentUser.profile_image_url) {
+        return getImageUrl(currentUser.profile_image_url);
+      }
+    }
+
+    // 2. 남이 쓴 글이라면, 게시글에 포함된 작성자 정보(post.user) 사용
     if (post.user && post.user.profile_image_url) {
       return getImageUrl(post.user.profile_image_url);
     }
-    const authorId = post.user_id || post.userId;
-    if (currentUser && String(currentUser.id) === String(authorId)) {
-      return getImageUrl(currentUser.profile_image_url);
-    }
-    // 기본 이미지
+
+    // 3. 둘 다 없으면 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
@@ -141,7 +147,6 @@ const MainPage = () => {
       const response = await postAPI.togglePostLike(id);
       const { liked, likesCount } = response.data;
 
-      // UI 즉시 반영
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.id === id
@@ -157,7 +162,6 @@ const MainPage = () => {
         )
       );
 
-      // localStorage 동기화
       let likedIds = getLikedPostIds();
       if (liked) {
         if (!likedIds.includes(id)) likedIds.push(id);
@@ -206,11 +210,15 @@ const MainPage = () => {
           <div className="post-card" key={post.id}>
             {/* 헤더 */}
             <div className="post-header">
-              {/* ★ 이미지 태그로 복구됨 ★ */}
+              {/* ★ 프로필 이미지 표시 (onError 추가) */}
               <img
                 src={getProfileImage(post)}
                 alt="profile"
                 className="header-profile-img"
+                onError={(e) => {
+                  e.target.src =
+                    "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+                }}
               />
               <span className="header-username">{getDisplayName(post)}</span>
             </div>

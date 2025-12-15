@@ -46,7 +46,6 @@ const MyPage = () => {
         const userData = userRes.data;
         setUser(userData);
 
-        // 편집 폼 초기값 설정
         setEditForm({
           nickname: userData.nickname || "",
           bio: userData.bio || "",
@@ -83,9 +82,10 @@ const MyPage = () => {
     return `http://localhost:4000${path}`;
   };
 
+  // ★ 상세 페이지 이동 함수
   const goToDetail = (id) => {
     if (!id) {
-      alert("원본 게시물이 존재하지 않습니다.");
+      alert("게시물 정보를 찾을 수 없습니다.");
       return;
     }
     navigate(`/posts/${id}`);
@@ -97,31 +97,26 @@ const MyPage = () => {
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ★ [핵심 수정] 이미지 변경 즉시 저장 및 캐시 방지 적용
+  // 이미지 변경 핸들러
   const handleProfileImgChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     try {
-      // 1. 이미지 서버 업로드
       const formData = new FormData();
       formData.append("image", file);
       const uploadRes = await uploadAPI.uploadImage(formData);
 
-      // 2. 캐시 방지를 위해 URL 뒤에 현재 시간 타임스탬프 추가 (?t=...)
-      // 이렇게 하면 브라우저가 "새로운 이미지"로 인식하여 즉시 갱신합니다.
       const newImageUrl = `${uploadRes.data.url}?t=${Date.now()}`;
 
-      // 3. 프로필 정보 업데이트
       const updateData = {
         nickname: user.nickname,
-        bio: user.bio,
-        profile_image_url: newImageUrl, // 타임스탬프가 붙은 URL 사용
+        bio: user.bio || "",
+        profile_image_url: newImageUrl,
       };
 
       await userAPI.updateMyProfile(updateData);
 
-      // 4. 화면 즉시 강제 갱신
       setUser((prev) => ({
         ...prev,
         profile_image_url: newImageUrl,
@@ -135,11 +130,13 @@ const MyPage = () => {
       alert("프로필 사진이 변경되었습니다.");
     } catch (error) {
       console.error("프로필 사진 변경 실패:", error);
+      if (error.response && error.response.status === 422) {
+        console.log("422 에러 상세:", error.response.data);
+      }
       alert("사진 변경에 실패했습니다.");
     }
   };
 
-  // 편집 모드 시작
   const startEditing = () => {
     setEditForm({
       nickname: user.nickname || "",
@@ -149,10 +146,15 @@ const MyPage = () => {
     setIsEditing(true);
   };
 
-  // 텍스트 정보(닉네임, 소개) 저장
   const saveProfile = async () => {
     try {
-      const res = await userAPI.updateMyProfile(editForm);
+      const safeForm = {
+        ...editForm,
+        bio: editForm.bio || "",
+        profile_image_url: editForm.profile_image_url || "",
+      };
+
+      const res = await userAPI.updateMyProfile(safeForm);
       setUser(res.data);
       setIsEditing(false);
       alert("프로필 정보가 수정되었습니다.");
@@ -164,7 +166,6 @@ const MyPage = () => {
   if (loading) return <div className="loading">로딩 중...</div>;
   if (!user) return null;
 
-  // 화면에 표시할 이미지 선택
   const currentProfileUrl = isEditing
     ? getImageUrl(editForm.profile_image_url)
     : getImageUrl(user.profile_image_url);
@@ -176,7 +177,6 @@ const MyPage = () => {
     <div className="mypage">
       <div className="profile-header">
         <div className="profile-img-container">
-          {/* ★ key 속성 추가: URL이 바뀌면 컴포넌트를 새로 그려서 이미지를 확실하게 갱신함 */}
           <img
             key={currentProfileUrl}
             src={currentProfileUrl || defaultProfileUrl}
@@ -304,9 +304,12 @@ const MyPage = () => {
               <div className="no-content">작성한 댓글이 없습니다.</div>
             ) : (
               myComments.map((comment, idx) => {
+                // 원본 게시물 객체 확인
                 const targetPost = comment.post || comment.Post;
 
-                const targetPostId = targetPost?.id || comment.postId;
+                // ★ ID 추출 로직 강화: post 객체 ID -> camelCase -> snake_case 순서로 확인
+                const targetPostId =
+                  targetPost?.id || comment.postId || comment.post_id;
 
                 const rawThumbUrl =
                   targetPost?.images && targetPost.images.length > 0
@@ -321,7 +324,7 @@ const MyPage = () => {
                     className="comment-row"
                     onClick={() => {
                       if (targetPostId) goToDetail(targetPostId);
-                      else alert("원본 게시물을 찾을 수 없습니다.");
+                      else alert("게시물 정보를 찾을 수 없습니다.");
                     }}
                     style={{ cursor: "pointer" }}
                   >

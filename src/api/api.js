@@ -50,25 +50,12 @@ export const authAPI = {
 };
 
 export const postAPI = {
-  // 게시글 목록
   getPosts: (params) => api.get("/posts", { params }),
-
-  // 게시글 작성
   createPost: (data) => api.post("/posts", data),
-
-  // 게시글 상세 (조회용)
   getPostById: (id) => api.get(`/posts/${id}`),
-
-  // 게시글 상세 (수정 페이지용)
   getPostDetail: (id) => api.get(`/posts/${id}`),
-
-  // 게시글 수정
   updatePost: (postId, data) => api.patch(`/posts/${postId}`, data),
-
-  // 게시글 삭제
   deletePost: (postId) => api.delete(`/posts/${postId}`),
-
-  // 좋아요 토글
   togglePostLike: (postId) => api.post(`/posts/${postId}/likes/toggle`),
 };
 
@@ -83,14 +70,17 @@ export const commentAPI = {
 export const userAPI = {
   getMyProfile: () => api.get("/users/me"),
 
-  // ★ [수정됨] Swagger Request Body 스펙(profileImageUrl)에 맞게 데이터 변환 전송
+  // ★ [핵심 수정] 422 에러 방지 로직 추가
   updateMyProfile: (data) => {
+    // 서버가 null을 받으면 422 에러를 낼 수 있으므로 안전하게 처리
     const payload = {
-      nickname: data.nickname,
-      bio: data.bio,
-      // 프론트엔드에서 profile_image_url로 보내더라도, API 스펙인 profileImageUrl로 매핑
-      profileImageUrl: data.profileImageUrl || data.profile_image_url,
+      nickname: data.nickname, // 닉네임은 필수라 null일 확률 낮음
+      bio: data.bio || "", // bio가 null이면 빈 문자열로 보냄
+      // 프론트에서 넘어온 키가 무엇이든 API 스펙(profileImageUrl)에 맞춤
+      profileImageUrl: data.profileImageUrl || data.profile_image_url || "",
     };
+
+    console.log("프로필 수정 요청 데이터:", payload); // 디버깅용 로그
     return api.patch("/users/me", payload);
   },
 
