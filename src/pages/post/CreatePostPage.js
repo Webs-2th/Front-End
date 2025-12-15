@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi"; // 아이콘이 없으면 텍스트로 대체 가능
 import { postAPI, uploadAPI } from "../../api/api";
 import "./CreatePostPage.css";
 
@@ -16,11 +16,11 @@ const CreatePostPage = () => {
   const [tags, setTags] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 이미지 주소 처리 헬퍼 함수 (src="" 경고 방지)
+  // 이미지 주소 처리 헬퍼 함수
   const getImageUrl = (url) => {
     if (!url) return null;
-    if (url.startsWith("data:")) return url; // 미리보기용 Data URI는 그대로
-    if (url.startsWith("http")) return url; // 절대 경로는 그대로
+    if (url.startsWith("data:")) return url; // 미리보기용 Data URI
+    if (url.startsWith("http")) return url; // 절대 경로
     const path = url.startsWith("/") ? url : `/${url}`;
     return `http://localhost:4000${path}`;
   };
@@ -30,12 +30,13 @@ const CreatePostPage = () => {
     const fetchPost = async () => {
       if (id) {
         try {
+          // ★ 이제 api.js에 함수가 추가되었으므로 에러가 나지 않습니다.
           const response = await postAPI.getPostDetail(id);
           const post = response.data;
 
           setContent(post.body);
 
-          // 태그 데이터 안전하게 처리 (배열/문자열 모두 대응)
+          // 태그 데이터 안전하게 처리
           let safeTags = [];
           if (Array.isArray(post.tags)) {
             safeTags = post.tags;
@@ -43,7 +44,6 @@ const CreatePostPage = () => {
             safeTags = post.tags.split(",").map((t) => t.trim());
           }
 
-          // 태그가 있으면 # 붙여서 문자열로 변환 (입력창 표시용)
           if (safeTags.length > 0) {
             const formattedTags = safeTags
               .map((t) => (t.startsWith("#") ? t : `#${t}`))
@@ -82,8 +82,8 @@ const CreatePostPage = () => {
       alert("내용을 입력해주세요.");
       return;
     }
-    // 새 글 작성인데 사진이 없으면 경고
-    if (!id && !selectedFile) {
+    // 새 글 작성인데 사진이 없으면 경고 (수정 시에는 기존 사진 유지 가능)
+    if (!id && !selectedFile && !preview) {
       alert("사진을 선택해주세요.");
       return;
     }
@@ -113,27 +113,26 @@ const CreatePostPage = () => {
         title: content.slice(0, 20) || "게시글",
         body: content,
         place: "Unknown",
-        // ★ [핵심 수정] 백엔드 PostInput 스키마에 맞춰 'imageUrl' 키 사용 (url -> imageUrl)
+        // ★ 백엔드 스키마 맞춤 (url -> imageUrl)
         images: [{ imageUrl: finalImageUrl }],
         tags: tagArray,
       };
 
       if (id) {
-        // [수정] updatePost 호출
+        // [수정]
         await postAPI.updatePost(id, postData);
         alert("게시글이 수정되었습니다.");
         navigate(`/posts/${id}`);
       } else {
-        // [작성] createPost 호출
+        // [작성]
         await postAPI.createPost(postData);
         alert("게시글이 등록되었습니다.");
         navigate("/main");
       }
     } catch (error) {
       console.error("업로드 실패:", error);
-      // 에러 메시지 상세 출력 (디버깅용)
       if (error.response && error.response.status === 422) {
-        alert("입력 형식이 잘못되었습니다. (422 Error - imageUrl 확인 필요)");
+        alert("입력 형식이 잘못되었습니다. (422 Error)");
       } else {
         alert("실패했습니다. 다시 시도해주세요.");
       }
@@ -149,6 +148,7 @@ const CreatePostPage = () => {
     <div className="create-post-page">
       <header className="create-header">
         <button className="icon-btn back-arrow" onClick={() => navigate(-1)}>
+          {/* 아이콘 라이브러리가 없으면 텍스트로 대체됨 */}
           <FiArrowLeft size={26} color="#262626" />
         </button>
 
@@ -168,6 +168,7 @@ const CreatePostPage = () => {
           className="image-upload-area"
           onClick={() => fileInputRef.current.click()}
         >
+          {/* previewUrl이 null이면 렌더링하지 않음 -> src 경고 방지 */}
           {previewUrl ? (
             <img
               src={previewUrl}

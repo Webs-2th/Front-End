@@ -132,7 +132,6 @@ const PostDetailPage = () => {
 
       setPost((prev) => ({
         ...prev,
-        // 모든 좋아요 관련 변수를 갱신
         isLiked: liked,
         liked: liked,
         is_liked: liked,
@@ -238,12 +237,8 @@ const PostDetailPage = () => {
   if (loading) return <div className="loading">로딩 중...</div>;
   if (!post) return <div className="error">게시물이 존재하지 않습니다.</div>;
 
-  // 좋아요 상태 확인 (3가지 경우 모두 체크)
   const isLiked = post.isLiked || post.liked || post.is_liked || false;
-
-  // ★ 문법 에러 수정됨 (?? 로 통일)
   const likeCount = post.likes_count ?? post.likesCount ?? post.likes ?? 0;
-
   const commentCount =
     post.comment_count ??
     post.commentCount ??
@@ -253,7 +248,11 @@ const PostDetailPage = () => {
   return (
     <div className="post-detail-page">
       <header className="detail-header">
-        <button className="icon-btn back" onClick={() => navigate(-1)}></button>
+        {/* ★ 수정됨: 뒤로가기 버튼 클릭 시 무조건 /main 으로 이동 */}
+        <button
+          className="icon-btn back"
+          onClick={() => navigate("/main")}
+        ></button>
         <span className="header-title">게시물</span>
         {((currentUser?.id &&
           post.user_id &&

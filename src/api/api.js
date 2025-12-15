@@ -56,8 +56,12 @@ export const postAPI = {
   // 게시글 작성
   createPost: (data) => api.post("/posts", data),
 
-  // 게시글 상세 (PostDetailPage)
+  // 게시글 상세 (PostDetailPage 용)
   getPostById: (id) => api.get(`/posts/${id}`),
+
+  // ★ [수정됨] 게시글 상세 (수정 페이지용 - CreatePostPage에서 호출하는 이름)
+  // getPostById와 동일한 API를 호출하도록 추가
+  getPostDetail: (id) => api.get(`/posts/${id}`),
 
   // 게시글 수정
   updatePost: (postId, data) => api.patch(`/posts/${postId}`, data),
@@ -65,22 +69,22 @@ export const postAPI = {
   // 게시글 삭제
   deletePost: (postId) => api.delete(`/posts/${postId}`),
 
-  // [중요] 좋아요 토글 (Swagger: POST /posts/{postId}/likes/toggle)
+  // 좋아요 토글
   togglePostLike: (postId) => api.post(`/posts/${postId}/likes/toggle`),
 };
 
 export const commentAPI = {
-  // 댓글 목록 조회 (Swagger: GET /posts/{postId}/comments)
+  // 댓글 목록 조회
   getComments: (postId, params) =>
     api.get(`/posts/${postId}/comments`, { params }),
 
-  // 댓글 작성 (Swagger: POST /posts/{postId}/comments)
+  // 댓글 작성
   createComment: (postId, data) => api.post(`/posts/${postId}/comments`, data),
 
-  // 댓글 수정 (Swagger: PATCH /comments/{commentId})
+  // 댓글 수정
   updateComment: (commentId, data) => api.patch(`/comments/${commentId}`, data),
 
-  // 댓글 삭제 (Swagger: DELETE /comments/{commentId})
+  // 댓글 삭제
   deleteComment: (commentId) => api.delete(`/comments/${commentId}`),
 };
 
