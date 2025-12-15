@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
-import { postAPI, uploadAPI } from "../../api/api"; // API import
+import { postAPI, uploadAPI } from "../../api/api";
 import "./CreatePostPage.css";
 
 const CreatePostPage = () => {
@@ -16,7 +16,16 @@ const CreatePostPage = () => {
   const [tags, setTags] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ★ 1. 수정 모드일 때 기존 데이터 불러오기 (API 연동)
+  // 이미지 주소 처리 헬퍼 함수
+  const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith("data:")) return url; // 미리보기용 Data URI는 그대로
+    if (url.startsWith("http")) return url; // 절대 경로는 그대로
+    const path = url.startsWith("/") ? url : `/${url}`;
+    return `http://localhost:4000${path}`;
+  };
+
+  // 1. 수정 모드일 때 기존 데이터 불러오기
   useEffect(() => {
     const fetchPost = async () => {
       if (id) {
@@ -24,11 +33,25 @@ const CreatePostPage = () => {
           const response = await postAPI.getPostDetail(id);
           const post = response.data;
 
-          // 기존 데이터 상태에 채워넣기
           setContent(post.body);
-          // 태그 배열을 문자열(#태그 #태그)로 변환
-          setTags(post.tags ? post.tags.join(" ") : "");
-          // 기존 이미지 (첫 번째 이미지)
+
+          // 태그 데이터 안전하게 처리
+          let safeTags = [];
+          if (Array.isArray(post.tags)) {
+            safeTags = post.tags;
+          } else if (typeof post.tags === "string") {
+            safeTags = post.tags.split(",").map((t) => t.trim());
+          }
+
+          // 태그가 있으면 # 붙여서 문자열로 변환 (입력창 표시용)
+          if (safeTags.length > 0) {
+            const formattedTags = safeTags
+              .map((t) => (t.startsWith("#") ? t : `#${t}`))
+              .join(" ");
+            setTags(formattedTags);
+          }
+
+          // 기존 이미지 설정
           if (post.images && post.images.length > 0) {
             setPreview(post.images[0].url);
           }
@@ -42,14 +65,10 @@ const CreatePostPage = () => {
     fetchPost();
   }, [id, navigate]);
 
-  // 이미지 선택 핸들러
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // 1. 파일 객체 저장 (나중에 업로드용)
       setSelectedFile(file);
-
-      // 2. 미리보기용 URL 생성 (즉시 보여주기용)
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result);
@@ -58,13 +77,11 @@ const CreatePostPage = () => {
     }
   };
 
-  // 작성/수정 완료 핸들러
   const handleSubmit = async () => {
     if (!content) {
       alert("내용을 입력해주세요.");
       return;
     }
-    // 수정 모드가 아니고, 새 글인데 사진이 없으면 경고
     if (!id && !selectedFile) {
       alert("사진을 선택해주세요.");
       return;
@@ -73,45 +90,59 @@ const CreatePostPage = () => {
     setLoading(true);
 
     try {
-      let finalImageUrl = preview; // 수정 모드일 경우 기존 URL 유지
+      let finalImageUrl = preview;
 
-      // 1. 새 이미지가 선택되었다면 먼저 이미지 업로드 API 호출
+      // 1. 새 이미지가 선택되었다면 업로드
       if (selectedFile) {
         const formData = new FormData();
         formData.append("image", selectedFile);
-
         const uploadRes = await uploadAPI.uploadImage(formData);
-        finalImageUrl = uploadRes.data.url; // 서버에서 받은 이미지 URL
+        finalImageUrl = uploadRes.data.url;
       }
 
-      // 2. 게시글 데이터 구성
-      // 백엔드 명세에 맞춰 데이터 가공
+      // 2. 태그 처리
+      const tagArray = tags
+        .split(" ")
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0)
+        .map((t) => (t.startsWith("#") ? t : `#${t}`));
+
+      // 3. 데이터 구성
       const postData = {
-        title: content.slice(0, 20) || "새로운 게시글", // 제목이 없으므로 내용 앞부분 사용
+        title: content.slice(0, 20) || "게시글",
         body: content,
-        place: "Unknown", // 위치 기능이 없으므로 임시 값
-        images: [{ imageUrl: finalImageUrl }], // 이미지 배열 형태
-        tags: tags.split(" ").filter((tag) => tag.startsWith("#")), // 태그 처리
+        place: "Unknown",
+        // ★ [핵심 수정] 백엔드 PostInput 스키마는 'imageUrl'을 요구합니다. (url -> imageUrl 변경)
+        images: [{ imageUrl: finalImageUrl }],
+        tags: tagArray,
       };
 
       if (id) {
-        // [수정]
+        // [수정] updatePost 호출
         await postAPI.updatePost(id, postData);
         alert("게시글이 수정되었습니다.");
         navigate(`/posts/${id}`);
       } else {
-        // [작성]
+        // [작성] createPost 호출
         await postAPI.createPost(postData);
         alert("게시글이 등록되었습니다.");
         navigate("/main");
       }
     } catch (error) {
       console.error("업로드 실패:", error);
-      alert("게시글 업로드 중 오류가 발생했습니다.");
+      // 에러 메시지 상세 출력 (디버깅용)
+      if (error.response && error.response.status === 422) {
+        alert("입력 형식이 잘못되었습니다. (422 Error)");
+      } else {
+        alert("실패했습니다. 다시 시도해주세요.");
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // 렌더링 시 사용할 이미지 URL 계산
+  const previewUrl = getImageUrl(preview);
 
   return (
     <div className="create-post-page">
@@ -125,20 +156,26 @@ const CreatePostPage = () => {
         <button
           className="submit-text-btn"
           onClick={handleSubmit}
-          disabled={loading} // 로딩 중 클릭 방지
+          disabled={loading}
         >
           {loading ? "처리 중..." : id ? "완료" : "공유"}
         </button>
       </header>
 
       <div className="create-content">
-        {/* 이미지 업로드 영역 */}
         <div
           className="image-upload-area"
           onClick={() => fileInputRef.current.click()}
         >
-          {preview ? (
-            <img src={preview} alt="preview" className="preview-img" />
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="preview"
+              className="preview-img"
+              onError={(e) => {
+                e.target.src = "https://placehold.co/300x300?text=No+Image";
+              }}
+            />
           ) : (
             <div className="upload-placeholder">
               <span>사진 추가</span>
@@ -153,7 +190,6 @@ const CreatePostPage = () => {
           />
         </div>
 
-        {/* 텍스트 입력 영역 */}
         <div className="input-section">
           <textarea
             className="caption-input"

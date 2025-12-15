@@ -51,24 +51,16 @@ const MyPage = () => {
         const validPosts = rawPosts.filter((post) => !post.deleted_at);
         setMyPosts(validPosts);
 
-        // 2. ★ 내 댓글 필터링 (수정됨) ★
+        // 2. 내 댓글 필터링 (엄격 모드: 삭제된 글의 댓글은 숨김)
         const rawComments = commentsRes.data.items || commentsRes.data || [];
-
         const validComments = rawComments.filter((comment) => {
-          // 1) 댓글 자체가 삭제된 경우 제외
           if (comment.deleted_at) return false;
-
-          // 2) [삭제됨] 게시글 정보(post)가 없어도 댓글은 보여주도록 수정
-          // if (!comment.post) return false; <--- 이 줄을 제거하여 댓글이 보이게 함
-
-          // 3) 연결된 게시글이 있다고 확인된 경우에만 삭제 여부 체크
-          if (comment.post && comment.post.deleted_at) return false;
-
+          if (!comment.post) return false; // 게시글 완전 삭제됨
+          if (comment.post.deleted_at) return false; // 게시글 소프트 삭제됨
           return true;
         });
 
         setMyComments(validComments);
-        console.log("내 댓글 목록:", validComments); // 디버깅용 로그
       } catch (error) {
         console.error("마이페이지 로딩 실패:", error);
         handleLogout();
@@ -80,8 +72,9 @@ const MyPage = () => {
     fetchData();
   }, [navigate, handleLogout]);
 
+  // ★ [수정됨] URL이 없으면 "" 대신 null을 반환하여 경고 방지
   const getImageUrl = (url) => {
-    if (!url) return "";
+    if (!url) return null;
     if (url.startsWith("http")) return url;
     if (url.startsWith("data:image")) return url;
     const path = url.startsWith("/") ? url : `/${url}`;
@@ -134,18 +127,22 @@ const MyPage = () => {
   if (loading) return <div className="loading">로딩 중...</div>;
   if (!user) return null;
 
+  // 프로필 이미지 URL 결정 (수정 중 vs 일반)
+  const currentProfileUrl = isEditing
+    ? getImageUrl(editForm.profile_image_url)
+    : getImageUrl(user.profile_image_url);
+
+  // 기본 프로필 이미지
+  const defaultProfileUrl =
+    "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+
   return (
     <div className="mypage">
       <div className="profile-header">
         <div className="profile-img-container">
+          {/* ★ [수정됨] src={A || B} 패턴 사용으로 빈 문자열 전달 방지 */}
           <img
-            src={
-              isEditing
-                ? getImageUrl(editForm.profile_image_url) ||
-                  "https://cdn-icons-png.flaticon.com/512/847/847969.png"
-                : getImageUrl(user.profile_image_url) ||
-                  "https://cdn-icons-png.flaticon.com/512/847/847969.png"
-            }
+            src={currentProfileUrl || defaultProfileUrl}
             alt="profile"
             className="my-profile-img"
             onClick={() => isEditing && fileInputRef.current.click()}
@@ -241,19 +238,28 @@ const MyPage = () => {
             {myPosts.length === 0 ? (
               <div className="no-content">작성한 게시물이 없습니다.</div>
             ) : (
-              myPosts.map((post) => (
-                <div
-                  key={post.id}
-                  className="grid-item"
-                  onClick={() => goToDetail(post.id)}
-                >
-                  {post.images && post.images.length > 0 ? (
-                    <img src={getImageUrl(post.images[0].url)} alt="post" />
-                  ) : (
-                    <div className="no-image-placeholder">No Image</div>
-                  )}
-                </div>
-              ))
+              myPosts.map((post) => {
+                // 게시물 이미지 URL 처리
+                const postImgUrl =
+                  post.images && post.images.length > 0
+                    ? getImageUrl(post.images[0].url)
+                    : null;
+
+                return (
+                  <div
+                    key={post.id}
+                    className="grid-item"
+                    onClick={() => goToDetail(post.id)}
+                  >
+                    {/* ★ [수정됨] URL이 있을 때만 img 렌더링 */}
+                    {postImgUrl ? (
+                      <img src={postImgUrl} alt="post" />
+                    ) : (
+                      <div className="no-image-placeholder">No Image</div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         ) : (
@@ -262,9 +268,16 @@ const MyPage = () => {
               <div className="no-content">작성한 댓글이 없습니다.</div>
             ) : (
               myComments.map((comment, idx) => {
-                // 클릭 시 이동할 게시글 ID 찾기 (post 객체 내부 혹은 comment 자체 필드)
                 const targetPostId =
                   comment.post?.id || comment.postId || comment.post_id;
+
+                // ★ [수정됨] 썸네일 이미지 URL 안전하게 추출
+                const rawThumbUrl =
+                  comment.post?.images && comment.post.images.length > 0
+                    ? comment.post.images[0].url
+                    : null;
+
+                const finalThumbSrc = getImageUrl(rawThumbUrl);
 
                 return (
                   <div
@@ -274,10 +287,17 @@ const MyPage = () => {
                     style={{ cursor: targetPostId ? "pointer" : "default" }}
                   >
                     <div className="comment-thumb">
-                      {comment.post?.images?.[0] ? (
+                      {/* ★ [수정됨] URL이 있을 때만 이미지 렌더링, 없으면 회색 박스 */}
+                      {finalThumbSrc ? (
                         <img
-                          src={getImageUrl(comment.post.images[0].url)}
+                          src={finalThumbSrc}
                           alt="thumb"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            e.target.parentNode.classList.add(
+                              "thumb-placeholder"
+                            );
+                          }}
                         />
                       ) : (
                         <div className="thumb-placeholder"></div>
