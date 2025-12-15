@@ -27,24 +27,21 @@ const PostDetailPage = () => {
 
   const commentInputRef = useRef(null);
 
-  // ★ 1. 데이터 불러오기 (게시글 + 내 정보 + 댓글 목록)
+  // 1. 데이터 불러오기 (게시글 + 내 정보 + 댓글 목록)
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // 게시글, 댓글목록, 내 정보를 한번에 요청
         const [postRes, commentsRes, userRes] = await Promise.allSettled([
           postAPI.getPostById(id),
           commentAPI.getComments(id),
           authAPI.getMe(),
         ]);
 
-        // 1. 게시글 데이터 처리
         if (postRes.status === "fulfilled") {
           const fetchedPost = postRes.value.data;
 
-          // 2. ★ 가져온 댓글 목록을 게시글 객체 안에 합치기
           if (commentsRes.status === "fulfilled") {
             const fetchedComments =
               commentsRes.value.data.items || commentsRes.value.data || [];
@@ -59,7 +56,6 @@ const PostDetailPage = () => {
           throw new Error("게시물을 불러오지 못했습니다.");
         }
 
-        // 3. 내 정보 처리
         if (userRes.status === "fulfilled" && userRes.value.data) {
           setCurrentUser(userRes.value.data);
         }
@@ -75,18 +71,25 @@ const PostDetailPage = () => {
     if (id) fetchData();
   }, [id, navigate]);
 
+  // ★ [핵심 수정] 사용자 이름 표시 로직 강화
   const getDisplayName = (user, authorId) => {
-    if (user && (user.nickname || user.username || user.name)) {
-      return user.nickname || user.username || user.name;
+    // 1순위: user 객체가 존재할 경우, 최대한 이름을 찾아 반환 (다른 사용자 닉네임 표시)
+    if (user) {
+      return (
+        user.nickname ||
+        user.username ||
+        user.name ||
+        (user.email ? user.email.split("@")[0] : "익명 사용자")
+      );
     }
+
+    // 2순위: user 객체는 없으나, ID를 통해 현재 로그인한 '나'의 글임을 확인
     if (currentUser && authorId) {
       if (String(currentUser.id) === String(authorId)) {
         return currentUser.nickname || currentUser.username || "나";
       }
     }
-    if (user && user.email) {
-      return user.email.split("@")[0];
-    }
+
     return "익명 사용자";
   };
 
@@ -271,7 +274,6 @@ const PostDetailPage = () => {
           </span>
         </div>
 
-        {/* ★ 수정된 해시태그 영역 (getSafeTags 적용) ★ */}
         {getSafeTags(post.tags).length > 0 && (
           <div className="tags-section">
             {getSafeTags(post.tags).map((tag, idx) => (

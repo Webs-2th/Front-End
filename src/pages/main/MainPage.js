@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
 
-// ★ [핵심 수정] 태그 데이터를 안전한 배열로 변환하는 헬퍼 함수
-// DB에서 문자열("태그1,태그2")로 오든, 배열(['태그1'])로 오든, null로 오든 에러 없이 배열로 반환
+// 태그 데이터를 안전한 배열로 변환하는 헬퍼 함수
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -36,7 +35,6 @@ const MainPage = () => {
         // 게시글 처리
         if (postsRes.status === "fulfilled") {
           const items = postsRes.value.data.items || postsRes.value.data || [];
-          // 삭제된 게시물(deleted_at이 있는 경우) 제외 필터링
           const validPosts = items.filter((post) => !post.deleted_at);
           setPosts(validPosts);
           console.log("불러온 게시물:", validPosts);
@@ -57,23 +55,23 @@ const MainPage = () => {
     fetchData();
   }, []);
 
-  // 사용자 이름 표시 로직
+  // ★ [핵심 수정] 사용자 이름 표시 로직 강화
   const getDisplayName = (user, authorId) => {
-    // 1. 게시물 객체 안에 유저 정보가 있는 경우
-    if (user && (user.nickname || user.username || user.name)) {
-      return user.nickname || user.username || user.name;
+    // 1순위: user 객체가 존재할 경우, 최대한 이름을 찾아 반환 (다른 사용자 닉네임 표시)
+    if (user) {
+      return (
+        user.nickname ||
+        user.username ||
+        user.name ||
+        (user.email ? user.email.split("@")[0] : "익명 사용자")
+      );
     }
 
-    // 2. 유저 정보가 없어도 작성자 ID가 '나'와 같다면 내 닉네임 표시
+    // 2순위: user 객체는 없으나, ID를 통해 현재 로그인한 '나'의 글임을 확인
     if (currentUser && authorId) {
       if (String(currentUser.id) === String(authorId)) {
         return currentUser.nickname || currentUser.username || "나";
       }
-    }
-
-    // 3. 이메일만 있는 경우
-    if (user && user.email) {
-      return user.email.split("@")[0];
     }
 
     return "익명 사용자";
@@ -135,7 +133,7 @@ const MainPage = () => {
             <img
               src={
                 post.user?.profile_image_url ||
-                currentUser?.profile_image_url || // 작성자 이미지가 없으면 내 이미지(내 글일 경우 대비)
+                currentUser?.profile_image_url ||
                 "https://cdn-icons-png.flaticon.com/512/847/847969.png"
               }
               alt="profile"
@@ -201,8 +199,7 @@ const MainPage = () => {
               </span>
             </div>
 
-            {/* ★ 수정된 해시태그 영역 ★ */}
-            {/* getSafeTags 함수를 통해 안전하게 배열로 변환된 태그만 렌더링 */}
+            {/* 해시태그 영역 */}
             {getSafeTags(post.tags).length > 0 && (
               <div
                 className="tags"
@@ -223,7 +220,6 @@ const MainPage = () => {
                       fontSize: "14px",
                     }}
                   >
-                    {/* 태그에 #이 없으면 붙여서 표시 */}
                     {tag.trim().startsWith("#") ? tag.trim() : `#${tag.trim()}`}
                   </span>
                 ))}
