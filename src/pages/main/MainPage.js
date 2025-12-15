@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUserCircle } from "react-icons/fa";
 import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
 
@@ -93,6 +92,21 @@ const MainPage = () => {
     if (url.startsWith("data:image")) return url;
     const path = url.startsWith("/") ? url : `/${url}`;
     return `http://localhost:4000${path}`;
+  };
+
+  // --------------------
+  // 프로필 이미지 처리
+  // --------------------
+  const getProfileImage = (post) => {
+    if (post.user && post.user.profile_image_url) {
+      return getImageUrl(post.user.profile_image_url);
+    }
+    const authorId = post.user_id || post.userId;
+    if (currentUser && String(currentUser.id) === String(authorId)) {
+      return getImageUrl(currentUser.profile_image_url);
+    }
+    // 기본 이미지
+    return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
   // --------------------
@@ -192,10 +206,11 @@ const MainPage = () => {
           <div className="post-card" key={post.id}>
             {/* 헤더 */}
             <div className="post-header">
-              <FaUserCircle
-                size={32}
-                color="#c7c7c7"
-                style={{ marginRight: "10px" }}
+              {/* ★ 이미지 태그로 복구됨 ★ */}
+              <img
+                src={getProfileImage(post)}
+                alt="profile"
+                className="header-profile-img"
               />
               <span className="header-username">{getDisplayName(post)}</span>
             </div>

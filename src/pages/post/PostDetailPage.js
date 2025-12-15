@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaUserCircle } from "react-icons/fa";
 import { postAPI, authAPI, commentAPI } from "../../api/api";
 import CommentSection from "../../components/CommentSection";
 import PostOptionMenu from "./PostOptionMenu";
@@ -111,6 +110,22 @@ const PostDetailPage = () => {
     if (url.startsWith("data:image")) return url;
     const path = url.startsWith("/") ? url : `/${url}`;
     return `http://localhost:4000${path}`;
+  };
+
+  // --------------------
+  // 프로필 이미지 처리
+  // --------------------
+  const getProfileImage = (postObj) => {
+    if (!postObj)
+      return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+    if (postObj.user && postObj.user.profile_image_url) {
+      return getImageUrl(postObj.user.profile_image_url);
+    }
+    const authorId = postObj.user_id || postObj.userId;
+    if (currentUser && String(currentUser.id) === String(authorId)) {
+      return getImageUrl(currentUser.profile_image_url);
+    }
+    return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
   // --------------------
@@ -305,7 +320,12 @@ const PostDetailPage = () => {
 
       <div className="detail-content">
         <div className="user-info">
-          <FaUserCircle size={32} color="#c7c7c7" />
+          {/* ★ 이미지 태그로 복구됨 ★ */}
+          <img
+            src={getProfileImage(post)}
+            alt="profile"
+            className="profile-img"
+          />
           <span className="username">{getDisplayName(post)}</span>
         </div>
 
@@ -332,7 +352,6 @@ const PostDetailPage = () => {
           />
         </div>
 
-        {/* ★ 수정된 부분: className 추가 ★ */}
         <div className="likes-info">
           <span className="likes-count">좋아요 {likeCount}개</span>
           <span className="comments-count">댓글 {commentCount}개</span>

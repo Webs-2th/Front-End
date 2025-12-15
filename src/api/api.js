@@ -50,17 +50,16 @@ export const authAPI = {
 };
 
 export const postAPI = {
-  // 게시글 목록 (MainPage)
+  // 게시글 목록
   getPosts: (params) => api.get("/posts", { params }),
 
   // 게시글 작성
   createPost: (data) => api.post("/posts", data),
 
-  // 게시글 상세 (PostDetailPage 용)
+  // 게시글 상세 (조회용)
   getPostById: (id) => api.get(`/posts/${id}`),
 
-  // ★ [수정됨] 게시글 상세 (수정 페이지용 - CreatePostPage에서 호출하는 이름)
-  // getPostById와 동일한 API를 호출하도록 추가
+  // 게시글 상세 (수정 페이지용)
   getPostDetail: (id) => api.get(`/posts/${id}`),
 
   // 게시글 수정
@@ -74,23 +73,27 @@ export const postAPI = {
 };
 
 export const commentAPI = {
-  // 댓글 목록 조회
   getComments: (postId, params) =>
     api.get(`/posts/${postId}/comments`, { params }),
-
-  // 댓글 작성
   createComment: (postId, data) => api.post(`/posts/${postId}/comments`, data),
-
-  // 댓글 수정
   updateComment: (commentId, data) => api.patch(`/comments/${commentId}`, data),
-
-  // 댓글 삭제
   deleteComment: (commentId) => api.delete(`/comments/${commentId}`),
 };
 
 export const userAPI = {
   getMyProfile: () => api.get("/users/me"),
-  updateMyProfile: (data) => api.patch("/users/me", data),
+
+  // ★ [수정됨] Swagger Request Body 스펙(profileImageUrl)에 맞게 데이터 변환 전송
+  updateMyProfile: (data) => {
+    const payload = {
+      nickname: data.nickname,
+      bio: data.bio,
+      // 프론트엔드에서 profile_image_url로 보내더라도, API 스펙인 profileImageUrl로 매핑
+      profileImageUrl: data.profileImageUrl || data.profile_image_url,
+    };
+    return api.patch("/users/me", payload);
+  },
+
   getMyPosts: (params) => api.get("/users/me/posts", { params }),
   getMyComments: (params) => api.get("/users/me/comments", { params }),
   getCommentedPosts: (params) => api.get("/users/me/commented-posts"),

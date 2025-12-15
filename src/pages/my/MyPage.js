@@ -46,21 +46,23 @@ const MyPage = () => {
         const userData = userRes.data;
         setUser(userData);
 
-        // 1. 내 게시물 처리 (삭제 안 된 것만)
+        // 편집 폼 초기값 설정
+        setEditForm({
+          nickname: userData.nickname || "",
+          bio: userData.bio || "",
+          profile_image_url: userData.profile_image_url || "",
+        });
+
+        // 1. 내 게시물
         const rawPosts = postsRes.data.items || postsRes.data || [];
         const validPosts = rawPosts.filter((post) => !post.deleted_at);
         setMyPosts(validPosts);
 
-        // 2. 내 댓글 처리
+        // 2. 내 댓글
         const rawComments = commentsRes.data.items || commentsRes.data || [];
-        console.log("서버에서 받은 댓글 원본:", rawComments);
-
-        // 댓글 자체가 삭제된 것만 제외하고 모두 표시 (게시물 삭제 여부 상관 X)
         const validComments = rawComments.filter(
           (comment) => !comment.deleted_at
         );
-
-        console.log("화면에 표시할 댓글 목록:", validComments);
         setMyComments(validComments);
       } catch (error) {
         console.error("데이터 로딩 에러:", error);
@@ -81,34 +83,63 @@ const MyPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // ★ 게시물 상세 페이지 이동
   const goToDetail = (id) => {
     if (!id) {
-      alert("원본 게시물이 존재하지 않거나 삭제되어 이동할 수 없습니다.");
+      alert("원본 게시물이 존재하지 않습니다.");
       return;
     }
     navigate(`/posts/${id}`);
   };
 
-  // 프로필 편집 관련 핸들러들
+  // 텍스트 편집 핸들러
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ★ [핵심 수정] 이미지 변경 즉시 저장 및 캐시 방지 적용
   const handleProfileImgChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     try {
+      // 1. 이미지 서버 업로드
       const formData = new FormData();
       formData.append("image", file);
-      const res = await uploadAPI.uploadImage(formData);
-      setEditForm((prev) => ({ ...prev, profile_image_url: res.data.url }));
+      const uploadRes = await uploadAPI.uploadImage(formData);
+
+      // 2. 캐시 방지를 위해 URL 뒤에 현재 시간 타임스탬프 추가 (?t=...)
+      // 이렇게 하면 브라우저가 "새로운 이미지"로 인식하여 즉시 갱신합니다.
+      const newImageUrl = `${uploadRes.data.url}?t=${Date.now()}`;
+
+      // 3. 프로필 정보 업데이트
+      const updateData = {
+        nickname: user.nickname,
+        bio: user.bio,
+        profile_image_url: newImageUrl, // 타임스탬프가 붙은 URL 사용
+      };
+
+      await userAPI.updateMyProfile(updateData);
+
+      // 4. 화면 즉시 강제 갱신
+      setUser((prev) => ({
+        ...prev,
+        profile_image_url: newImageUrl,
+      }));
+
+      setEditForm((prev) => ({
+        ...prev,
+        profile_image_url: newImageUrl,
+      }));
+
+      alert("프로필 사진이 변경되었습니다.");
     } catch (error) {
-      console.error("이미지 업로드 실패:", error);
+      console.error("프로필 사진 변경 실패:", error);
+      alert("사진 변경에 실패했습니다.");
     }
   };
 
+  // 편집 모드 시작
   const startEditing = () => {
     setEditForm({
       nickname: user.nickname || "",
@@ -118,12 +149,13 @@ const MyPage = () => {
     setIsEditing(true);
   };
 
+  // 텍스트 정보(닉네임, 소개) 저장
   const saveProfile = async () => {
     try {
       const res = await userAPI.updateMyProfile(editForm);
       setUser(res.data);
       setIsEditing(false);
-      alert("프로필이 수정되었습니다.");
+      alert("프로필 정보가 수정되었습니다.");
     } catch (error) {
       alert("수정에 실패했습니다.");
     }
@@ -132,6 +164,7 @@ const MyPage = () => {
   if (loading) return <div className="loading">로딩 중...</div>;
   if (!user) return null;
 
+  // 화면에 표시할 이미지 선택
   const currentProfileUrl = isEditing
     ? getImageUrl(editForm.profile_image_url)
     : getImageUrl(user.profile_image_url);
@@ -141,25 +174,27 @@ const MyPage = () => {
 
   return (
     <div className="mypage">
-      {/* --- 프로필 헤더 영역 --- */}
       <div className="profile-header">
         <div className="profile-img-container">
+          {/* ★ key 속성 추가: URL이 바뀌면 컴포넌트를 새로 그려서 이미지를 확실하게 갱신함 */}
           <img
+            key={currentProfileUrl}
             src={currentProfileUrl || defaultProfileUrl}
             alt="profile"
             className="my-profile-img"
-            onClick={() => isEditing && fileInputRef.current.click()}
-            style={{ cursor: isEditing ? "pointer" : "default" }}
+            onClick={() => fileInputRef.current.click()}
+            style={{ cursor: "pointer" }}
+            onError={(e) => {
+              e.target.src = defaultProfileUrl;
+            }}
           />
-          {isEditing && (
-            <input
-              type="file"
-              ref={fileInputRef}
-              hidden
-              accept="image/*"
-              onChange={handleProfileImgChange}
-            />
-          )}
+          <input
+            type="file"
+            ref={fileInputRef}
+            hidden
+            accept="image/*"
+            onChange={handleProfileImgChange}
+          />
         </div>
 
         <div className="profile-info">
@@ -220,7 +255,6 @@ const MyPage = () => {
         </div>
       </div>
 
-      {/* --- 탭 메뉴 --- */}
       <div className="profile-tabs">
         <div
           className={`tab-item ${activeTab === "posts" ? "active" : ""}`}
@@ -236,10 +270,8 @@ const MyPage = () => {
         </div>
       </div>
 
-      {/* --- 탭 컨텐츠 --- */}
       <div className="profile-content">
         {activeTab === "posts" ? (
-          // [내 게시물 그리드 뷰]
           <div className="posts-grid">
             {myPosts.length === 0 ? (
               <div className="no-content">작성한 게시물이 없습니다.</div>
@@ -267,20 +299,15 @@ const MyPage = () => {
             )}
           </div>
         ) : (
-          // [내 댓글 리스트 뷰]
           <div className="comments-list-view">
             {myComments.length === 0 ? (
               <div className="no-content">작성한 댓글이 없습니다.</div>
             ) : (
               myComments.map((comment, idx) => {
-                // 게시물 정보 (대소문자 처리)
                 const targetPost = comment.post || comment.Post;
 
-                // ★ ID 추출 강화: post 객체가 없더라도 comment 자체에 postId가 있다면 그걸 사용
-                const targetPostId =
-                  targetPost?.id || comment.postId || comment.post_id;
+                const targetPostId = targetPost?.id || comment.postId;
 
-                // 썸네일 안전하게 추출
                 const rawThumbUrl =
                   targetPost?.images && targetPost.images.length > 0
                     ? targetPost.images[0].url
@@ -292,11 +319,12 @@ const MyPage = () => {
                   <div
                     key={comment.id || idx}
                     className="comment-row"
-                    // ★ 클릭 시 해당 ID로 이동
-                    onClick={() => goToDetail(targetPostId)}
+                    onClick={() => {
+                      if (targetPostId) goToDetail(targetPostId);
+                      else alert("원본 게시물을 찾을 수 없습니다.");
+                    }}
                     style={{ cursor: "pointer" }}
                   >
-                    {/* 게시물 썸네일 이미지 영역 */}
                     <div className="comment-thumb">
                       {finalThumbSrc ? (
                         <img
@@ -314,7 +342,6 @@ const MyPage = () => {
                       )}
                     </div>
 
-                    {/* 댓글 내용 및 날짜 */}
                     <div className="comment-preview">
                       <span className="comment-text-bold">
                         {comment.content}
