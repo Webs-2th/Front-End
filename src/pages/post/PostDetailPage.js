@@ -27,7 +27,6 @@ const PostDetailPage = () => {
 
   const commentInputRef = useRef(null);
 
-  // 1. 데이터 불러오기 (게시글 + 내 정보 + 댓글 목록)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -46,7 +45,6 @@ const PostDetailPage = () => {
             const fetchedComments =
               commentsRes.value.data.items || commentsRes.value.data || [];
             fetchedPost.comments = fetchedComments;
-            console.log("불러온 댓글:", fetchedComments);
           } else {
             fetchedPost.comments = [];
           }
@@ -71,25 +69,23 @@ const PostDetailPage = () => {
     if (id) fetchData();
   }, [id, navigate]);
 
-  // ★ [핵심 수정] 사용자 이름 표시 로직 강화
-  const getDisplayName = (user, authorId) => {
-    // 1순위: user 객체가 존재할 경우, 최대한 이름을 찾아 반환 (다른 사용자 닉네임 표시)
-    if (user) {
-      return (
-        user.nickname ||
-        user.username ||
-        user.name ||
-        (user.email ? user.email.split("@")[0] : "익명 사용자")
-      );
+  // ★ [수정됨] 사용자 이름 표시 로직 강화
+  const getDisplayName = (post) => {
+    // 1순위: post.user 객체 안에 닉네임이 있는 경우
+    if (post.user && post.user.nickname) {
+      return post.user.nickname;
     }
-
-    // 2순위: user 객체는 없으나, ID를 통해 현재 로그인한 '나'의 글임을 확인
+    // 2순위: post 객체 바로 아래에 nickname이 있는 경우
+    if (post.nickname) {
+      return post.nickname;
+    }
+    // 3순위: 내가 작성자인 경우
+    const authorId = post.user_id || post.userId;
     if (currentUser && authorId) {
       if (String(currentUser.id) === String(authorId)) {
         return currentUser.nickname || currentUser.username || "나";
       }
     }
-
     return "익명 사용자";
   };
 
@@ -101,33 +97,43 @@ const PostDetailPage = () => {
     return `http://localhost:4000${path}`;
   };
 
+  const getProfileImage = (post) => {
+    if (post.user && post.user.profile_image_url)
+      return getImageUrl(post.user.profile_image_url);
+    const authorId = post.user_id || post.userId;
+    if (currentUser && String(currentUser.id) === String(authorId)) {
+      return getImageUrl(currentUser.profile_image_url);
+    }
+    return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "";
     return dateString.split("T")[0];
   };
 
-  // ★ 좋아요 토글 기능 (API 연동 포함)
   const toggleLike = async () => {
     if (!post) return;
-    try {
-      // 1. 서버 API 호출 (togglePostLike는 postAPI에 정의되어 있어야 함)
-      await postAPI.togglePostLike(post.id);
+    if (!currentUser) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
 
-      // 2. 성공 시에만 로컬 상태 업데이트
-      const isLiked = !post.isLiked;
+    try {
+      const response = await postAPI.togglePostLike(post.id);
+      const { liked, likesCount } = response.data;
+
       setPost({
         ...post,
-        isLiked: isLiked,
-        // 좋아요 상태에 따라 카운트 증가/감소
-        likes: isLiked ? (post.likes || 0) + 1 : (post.likes || 0) - 1,
+        isLiked: liked,
+        likes: likesCount,
       });
     } catch (error) {
       console.error("좋아요 실패:", error);
-      alert("좋아요 처리에 실패했습니다. 로그인했는지 확인해주세요.");
+      alert("좋아요 처리에 실패했습니다.");
     }
   };
 
-  // 댓글 작성 (화면 즉시 반영)
   const handleAddComment = async (text) => {
     if (!currentUser) {
       alert("로그인 후 댓글을 작성할 수 있습니다.");
@@ -140,7 +146,6 @@ const PostDetailPage = () => {
         id: response.data?.id || Date.now(),
         content: text,
         user: currentUser,
-        // ★ 서버 응답에 user_id가 누락될 경우를 대비해 현재 로그인 ID를 추가
         user_id: currentUser.id,
         created_at: new Date().toISOString(),
       };
@@ -217,6 +222,9 @@ const PostDetailPage = () => {
   if (loading) return <div className="loading">로딩 중...</div>;
   if (!post) return <div className="error">게시물이 존재하지 않습니다.</div>;
 
+  const isLiked = post.isLiked || post.liked || false;
+  const likeCount = post.likes || post.likesCount || 0;
+
   return (
     <div className="post-detail-page">
       <header className="detail-header">
@@ -242,16 +250,13 @@ const PostDetailPage = () => {
       <div className="detail-content">
         <div className="user-info">
           <img
-            src={
-              post.user?.profile_image_url ||
-              currentUser?.profile_image_url ||
-              "https://cdn-icons-png.flaticon.com/512/847/847969.png"
-            }
+            src={getProfileImage(post)}
             alt="profile"
             className="profile-img"
           />
           <span className="username">
-            {getDisplayName(post.user, post.user_id || post.userId)}
+            {/* 여기도 post 객체를 통째로 넘깁니다 */}
+            {getDisplayName(post)}
           </span>
         </div>
 
@@ -261,7 +266,7 @@ const PostDetailPage = () => {
               src={getImageUrl(post.images[0].url)}
               alt="detail"
               onError={(e) => {
-                e.target.src = "https://via.placeholder.com/300";
+                e.target.src = "https://placehold.co/300x300?text=No+Image";
               }}
             />
           </div>
@@ -269,7 +274,7 @@ const PostDetailPage = () => {
 
         <div className="action-buttons">
           <button
-            className={`icon-btn heart ${post.isLiked ? "liked" : ""}`}
+            className={`icon-btn heart ${isLiked ? "liked" : ""}`}
             onClick={toggleLike}
           ></button>
           <button
@@ -279,7 +284,7 @@ const PostDetailPage = () => {
         </div>
 
         <div className="likes-info">
-          <span className="likes-count">좋아요 {post.likes || 0}개</span>
+          <span className="likes-count">좋아요 {likeCount}개</span>
           <span className="comments-count">
             댓글 {(post.comments || []).length}개
           </span>

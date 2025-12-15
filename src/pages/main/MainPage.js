@@ -21,7 +21,6 @@ const MainPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. 게시글 목록 + 내 정보 동시에 불러오기
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -32,7 +31,6 @@ const MainPage = () => {
           authAPI.getMe(),
         ]);
 
-        // 게시글 처리
         if (postsRes.status === "fulfilled") {
           const items = postsRes.value.data.items || postsRes.value.data || [];
           const validPosts = items.filter((post) => !post.deleted_at);
@@ -40,7 +38,6 @@ const MainPage = () => {
           console.log("불러온 게시물:", validPosts);
         }
 
-        // 내 정보 처리
         if (userRes.status === "fulfilled" && userRes.value.data) {
           setCurrentUser(userRes.value.data);
           console.log("현재 로그인한 유저:", userRes.value.data);
@@ -55,26 +52,40 @@ const MainPage = () => {
     fetchData();
   }, []);
 
-  // ★ 사용자 이름 표시 로직
-  const getDisplayName = (user, authorId) => {
-    // 1순위: user 객체가 존재할 경우, 최대한 이름을 찾아 반환 (다른 사용자 닉네임 표시)
-    if (user) {
-      return (
-        user.nickname ||
-        user.username ||
-        user.name ||
-        (user.email ? user.email.split("@")[0] : "익명 사용자")
-      );
+  // ★ [수정됨] 사용자 이름 표시 로직 (가장 중요)
+  const getDisplayName = (post) => {
+    // 1순위: API가 user 객체 안에 닉네임을 담아준 경우 (Standard)
+    if (post.user && post.user.nickname) {
+      return post.user.nickname;
     }
 
-    // 2순위: user 객체는 없으나, ID를 통해 현재 로그인한 '나'의 글임을 확인
+    // 2순위: API가 post 객체 바로 아래에 nickname을 담아준 경우 (Flat)
+    if (post.nickname) {
+      return post.nickname;
+    }
+
+    // 3순위: 로그인한 사용자가 작성자인 경우 (ID 비교)
+    const authorId = post.user_id || post.userId;
     if (currentUser && authorId) {
       if (String(currentUser.id) === String(authorId)) {
         return currentUser.nickname || currentUser.username || "나";
       }
     }
 
+    // 4순위: 정보가 없으면 익명
     return "익명 사용자";
+  };
+
+  const getProfileImage = (post) => {
+    // 작성자 프로필 이미지 찾기
+    if (post.user && post.user.profile_image_url)
+      return getImageUrl(post.user.profile_image_url);
+    // 작성자가 나인 경우 내 프로필 이미지
+    const authorId = post.user_id || post.userId;
+    if (currentUser && String(currentUser.id) === String(authorId)) {
+      return getImageUrl(currentUser.profile_image_url);
+    }
+    return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
   const getImageUrl = (url) => {
@@ -85,22 +96,22 @@ const MainPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // ★ 좋아요 토글 기능 (API 연동 포함)
   const toggleLike = async (id) => {
+    if (!currentUser) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
     try {
-      // 1. 서버 API 호출 (togglePostLike는 postAPI에 정의되어 있어야 함)
-      await postAPI.togglePostLike(id);
+      const response = await postAPI.togglePostLike(id);
+      const { liked, likesCount } = response.data;
 
-      // 2. 성공 시에만 로컬 상태 업데이트
       setPosts((prevPosts) =>
         prevPosts.map((post) => {
           if (post.id === id) {
-            const isLiked = !post.isLiked;
             return {
               ...post,
-              isLiked: isLiked,
-              // 좋아요 상태에 따라 카운트 증가/감소
-              likes: isLiked ? (post.likes || 0) + 1 : (post.likes || 0) - 1,
+              isLiked: liked,
+              likes: likesCount,
             };
           }
           return post;
@@ -108,7 +119,7 @@ const MainPage = () => {
       );
     } catch (error) {
       console.error("좋아요 실패:", error);
-      alert("좋아요 처리에 실패했습니다. 로그인했는지 확인해주세요.");
+      alert("좋아요 처리에 실패했습니다.");
     }
   };
 
@@ -137,110 +148,106 @@ const MainPage = () => {
         </div>
       )}
 
-      {posts.map((post) => (
-        <div className="post-card" key={post.id}>
-          {/* 헤더 */}
-          <div className="post-header">
-            <img
-              src={
-                post.user?.profile_image_url ||
-                currentUser?.profile_image_url ||
-                "https://cdn-icons-png.flaticon.com/512/847/847969.png"
-              }
-              alt="profile"
-              className="header-profile-img"
-            />
-            <span className="header-username">
-              {getDisplayName(post.user, post.user_id || post.userId)}
-            </span>
-          </div>
+      {posts.map((post) => {
+        const isLiked = post.isLiked || post.liked || false;
+        const likeCount = post.likes || post.likesCount || 0;
 
-          {/* 이미지 영역 */}
-          {post.images && post.images.length > 0 && (
-            <div
-              className="post-image"
-              onClick={() => goToDetail(post.id)}
-              style={{ cursor: "pointer" }}
-            >
+        return (
+          <div className="post-card" key={post.id}>
+            <div className="post-header">
               <img
-                src={getImageUrl(post.images[0].url)}
-                alt="post"
-                onError={(e) => {
-                  e.target.src =
-                    "https://via.placeholder.com/300?text=No+Image";
-                }}
+                src={getProfileImage(post)}
+                alt="profile"
+                className="header-profile-img"
               />
-            </div>
-          )}
-
-          {/* 아이콘 + 숫자 영역 */}
-          <div className="post-actions">
-            <div className="action-group">
-              <button
-                className={`icon-btn heart ${post.isLiked ? "liked" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleLike(post.id);
-                }}
-              ></button>
-              <span className="count-text">{post.likes || 0}</span>
-            </div>
-
-            <div className="action-group">
-              <button
-                className="icon-btn comment"
-                onClick={() => goToDetail(post.id)}
-              ></button>
-              <span className="count-text">{post.commentCount || 0}</span>
-            </div>
-          </div>
-
-          {/* 내용 및 해시태그 */}
-          <div className="post-content">
-            <div className="caption">
-              <span className="caption-username">
-                {getDisplayName(post.user, post.user_id || post.userId)}
+              <span className="header-username">
+                {/* 함수 호출 시 post 객체 전체를 넘김 */}
+                {getDisplayName(post)}
               </span>
-              <span
-                className="caption-text"
+            </div>
+
+            {post.images && post.images.length > 0 && (
+              <div
+                className="post-image"
                 onClick={() => goToDetail(post.id)}
                 style={{ cursor: "pointer" }}
               >
-                {post.body}
-              </span>
-            </div>
-
-            {/* 해시태그 영역 */}
-            {getSafeTags(post.tags).length > 0 && (
-              <div
-                className="tags"
-                style={{
-                  marginTop: "8px",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "5px",
-                }}
-              >
-                {getSafeTags(post.tags).map((tag, idx) => (
-                  <span
-                    key={idx}
-                    className="tag-item"
-                    style={{
-                      color: "#00376b",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                    }}
-                  >
-                    {tag.trim().startsWith("#") ? tag.trim() : `#${tag.trim()}`}
-                  </span>
-                ))}
+                <img
+                  src={getImageUrl(post.images[0].url)}
+                  alt="post"
+                  onError={(e) => {
+                    e.target.src = "https://placehold.co/300x300?text=No+Image";
+                  }}
+                />
               </div>
             )}
 
-            <div className="post-date">{formatDate(post.published_at)}</div>
+            <div className="post-actions">
+              <div className="action-group">
+                <button
+                  className={`icon-btn heart ${isLiked ? "liked" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLike(post.id);
+                  }}
+                ></button>
+                <span className="count-text">{likeCount}</span>
+              </div>
+
+              <div className="action-group">
+                <button
+                  className="icon-btn comment"
+                  onClick={() => goToDetail(post.id)}
+                ></button>
+                <span className="count-text">{post.commentCount || 0}</span>
+              </div>
+            </div>
+
+            <div className="post-content">
+              <div className="caption">
+                <span className="caption-username">{getDisplayName(post)}</span>
+                <span
+                  className="caption-text"
+                  onClick={() => goToDetail(post.id)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {post.body}
+                </span>
+              </div>
+
+              {getSafeTags(post.tags).length > 0 && (
+                <div
+                  className="tags"
+                  style={{
+                    marginTop: "8px",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "5px",
+                  }}
+                >
+                  {getSafeTags(post.tags).map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="tag-item"
+                      style={{
+                        color: "#00376b",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                      }}
+                    >
+                      {tag.trim().startsWith("#")
+                        ? tag.trim()
+                        : `#${tag.trim()}`}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="post-date">{formatDate(post.published_at)}</div>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

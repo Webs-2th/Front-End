@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { authAPI, userAPI, uploadAPI, removeCookie } from "../../api/api"; // removeCookie 추가
+import { authAPI, userAPI, uploadAPI, removeCookie } from "../../api/api";
 import "./MyPage.css";
 
 const MyPage = () => {
@@ -21,18 +21,15 @@ const MyPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // --- 로그아웃 핸들러 추가 ---
+  // --- 로그아웃 핸들러 ---
   const handleLogout = useCallback(() => {
-    // 1. 저장된 토큰 제거
-    removeCookie("accessToken"); // 쿠키 토큰 제거
-    localStorage.removeItem("accessToken"); // 로컬스토리지 토큰 제거 (비상용)
-
-    // 2. 상태 초기화 및 페이지 이동
+    removeCookie("accessToken");
+    localStorage.removeItem("accessToken");
     setUser(null);
     setMyPosts([]);
     setMyComments([]);
     alert("로그아웃 되었습니다.");
-    navigate("/login"); // 로그인 페이지로 이동
+    navigate("/login");
   }, [navigate]);
 
   // ★ 데이터 불러오기 및 필터링
@@ -49,31 +46,31 @@ const MyPage = () => {
         const userData = userRes.data;
         setUser(userData);
 
-        // 1. 내 게시물 필터링 (삭제된 글 제외)
+        // 1. 내 게시물 필터링
         const rawPosts = postsRes.data.items || postsRes.data || [];
         const validPosts = rawPosts.filter((post) => !post.deleted_at);
         setMyPosts(validPosts);
 
-        // 2. 내 댓글 필터링 (여기가 핵심!)
+        // 2. ★ 내 댓글 필터링 (수정됨) ★
         const rawComments = commentsRes.data.items || commentsRes.data || [];
 
         const validComments = rawComments.filter((comment) => {
           // 1) 댓글 자체가 삭제된 경우 제외
           if (comment.deleted_at) return false;
 
-          // 2) 연결된 게시글 정보(post)가 아예 없는 경우 제외 (게시글 완전 삭제됨)
-          if (!comment.post) return false;
+          // 2) [삭제됨] 게시글 정보(post)가 없어도 댓글은 보여주도록 수정
+          // if (!comment.post) return false; <--- 이 줄을 제거하여 댓글이 보이게 함
 
-          // 3) 연결된 게시글이 soft delete(휴지통) 상태인 경우 제외
-          if (comment.post.deleted_at) return false;
+          // 3) 연결된 게시글이 있다고 확인된 경우에만 삭제 여부 체크
+          if (comment.post && comment.post.deleted_at) return false;
 
           return true;
         });
 
         setMyComments(validComments);
+        console.log("내 댓글 목록:", validComments); // 디버깅용 로그
       } catch (error) {
         console.error("마이페이지 로딩 실패:", error);
-        // 오류 발생 시 로그아웃 처리 및 로그인 페이지로 리다이렉트
         handleLogout();
       } finally {
         setLoading(false);
@@ -81,9 +78,8 @@ const MyPage = () => {
     };
 
     fetchData();
-  }, [navigate, handleLogout]); // handleLogout 의존성 추가
+  }, [navigate, handleLogout]);
 
-  // --- 기존 코드 유지 ---
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -201,14 +197,10 @@ const MyPage = () => {
                 <span className="username">{user.nickname || "익명"}</span>
               </div>
               <div className="button-row">
-                {" "}
-                {/* 버튼을 담을 새로운 Row */}
                 <button className="edit-profile-btn" onClick={startEditing}>
                   프로필 편집
                 </button>
                 <button className="logout-btn" onClick={handleLogout}>
-                  {" "}
-                  {/* 로그아웃 버튼 */}
                   로그아웃
                 </button>
               </div>
@@ -227,7 +219,7 @@ const MyPage = () => {
           )}
         </div>
       </div>
-      {/* ... (나머지 UI 코드는 동일) ... */}
+
       <div className="profile-tabs">
         <div
           className={`tab-item ${activeTab === "posts" ? "active" : ""}`}
@@ -269,30 +261,39 @@ const MyPage = () => {
             {myComments.length === 0 ? (
               <div className="no-content">작성한 댓글이 없습니다.</div>
             ) : (
-              myComments.map((comment, idx) => (
-                <div
-                  key={comment.id || idx}
-                  className="comment-row"
-                  onClick={() => comment.post && goToDetail(comment.postId)}
-                >
-                  <div className="comment-thumb">
-                    {comment.post?.images?.[0] ? (
-                      <img
-                        src={getImageUrl(comment.post.images[0].url)}
-                        alt="thumb"
-                      />
-                    ) : (
-                      <div className="thumb-placeholder"></div>
-                    )}
+              myComments.map((comment, idx) => {
+                // 클릭 시 이동할 게시글 ID 찾기 (post 객체 내부 혹은 comment 자체 필드)
+                const targetPostId =
+                  comment.post?.id || comment.postId || comment.post_id;
+
+                return (
+                  <div
+                    key={comment.id || idx}
+                    className="comment-row"
+                    onClick={() => targetPostId && goToDetail(targetPostId)}
+                    style={{ cursor: targetPostId ? "pointer" : "default" }}
+                  >
+                    <div className="comment-thumb">
+                      {comment.post?.images?.[0] ? (
+                        <img
+                          src={getImageUrl(comment.post.images[0].url)}
+                          alt="thumb"
+                        />
+                      ) : (
+                        <div className="thumb-placeholder"></div>
+                      )}
+                    </div>
+                    <div className="comment-preview">
+                      <span className="comment-text-bold">
+                        {comment.content}
+                      </span>
+                      <span className="comment-date-small">
+                        {comment.created_at?.split("T")[0]}
+                      </span>
+                    </div>
                   </div>
-                  <div className="comment-preview">
-                    <span className="comment-text-bold">{comment.content}</span>
-                    <span className="comment-date-small">
-                      {comment.created_at?.split("T")[0]}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
