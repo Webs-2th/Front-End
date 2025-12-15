@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaUserCircle } from "react-icons/fa"; // ★ 아이콘 임포트
+import { FaUserCircle } from "react-icons/fa";
 import { postAPI, authAPI, commentAPI } from "../../api/api";
 import CommentSection from "../../components/CommentSection";
 import PostOptionMenu from "./PostOptionMenu";
 import "./PostDetailPage.css";
 
-// 태그 문자열/배열 처리 헬퍼 함수
+// --------------------
+// 태그 안전 처리
+// --------------------
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -16,6 +18,21 @@ const getSafeTags = (tags) => {
       .filter((t) => t !== "");
   }
   return [];
+};
+
+// --------------------
+// 좋아요 localStorage 헬퍼
+// --------------------
+const getLikedPostIds = () => {
+  try {
+    return JSON.parse(localStorage.getItem("likedPosts")) || [];
+  } catch {
+    return [];
+  }
+};
+
+const setLikedPostIds = (ids) => {
+  localStorage.setItem("likedPosts", JSON.stringify(ids));
 };
 
 const PostDetailPage = () => {
@@ -29,11 +46,15 @@ const PostDetailPage = () => {
 
   const commentInputRef = useRef(null);
 
-  // 1. 데이터 불러오기
+  // --------------------
+  // 데이터 로딩
+  // --------------------
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+
+        const likedPostIds = getLikedPostIds();
 
         const [postRes, commentsRes, userRes] = await Promise.allSettled([
           postAPI.getPostById(id),
@@ -41,11 +62,14 @@ const PostDetailPage = () => {
           authAPI.getMe(),
         ]);
 
-        // 1-1. 게시글 데이터
+        // 게시글
         if (postRes.status === "fulfilled") {
-          const fetchedPost = postRes.value.data;
+          const fetchedPost = {
+            ...postRes.value.data,
+            isLiked: likedPostIds.includes(Number(id)),
+          };
 
-          // 1-2. 댓글 데이터
+          // 댓글
           let fetchedComments = [];
           if (commentsRes.status === "fulfilled") {
             fetchedComments =
@@ -59,11 +83,11 @@ const PostDetailPage = () => {
           fetchedPost.comments = fetchedComments;
           setPost(fetchedPost);
         } else {
-          throw new Error("게시물을 불러오지 못했습니다.");
+          throw new Error("게시물 로딩 실패");
         }
 
-        // 1-3. 내 정보
-        if (userRes.status === "fulfilled" && userRes.value.data) {
+        // 내 정보
+        if (userRes.status === "fulfilled") {
           setCurrentUser(userRes.value.data);
         }
       } catch (error) {
@@ -78,6 +102,9 @@ const PostDetailPage = () => {
     if (id) fetchData();
   }, [id, navigate]);
 
+  // --------------------
+  // 이미지 URL 보정
+  // --------------------
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -86,10 +113,14 @@ const PostDetailPage = () => {
     return `http://localhost:4000${path}`;
   };
 
+  // --------------------
+  // 작성자 이름
+  // --------------------
   const getDisplayName = (postObj) => {
     if (!postObj) return "익명";
     if (postObj.user && postObj.user.nickname) return postObj.user.nickname;
     if (postObj.nickname) return postObj.nickname;
+
     const authorId = postObj.user_id || postObj.userId;
     if (
       currentUser &&
@@ -98,6 +129,7 @@ const PostDetailPage = () => {
     ) {
       return currentUser.nickname || "나";
     }
+
     return "익명 사용자";
   };
 
@@ -106,7 +138,9 @@ const PostDetailPage = () => {
     return dateString.split("T")[0];
   };
 
-  // 좋아요 토글 기능
+  // --------------------
+  // 좋아요 토글
+  // --------------------
   const toggleLike = async () => {
     if (!post) return;
     if (!currentUser) {
@@ -118,6 +152,7 @@ const PostDetailPage = () => {
       const response = await postAPI.togglePostLike(post.id);
       const { liked, likesCount } = response.data;
 
+      // UI 반영
       setPost((prev) => ({
         ...prev,
         isLiked: liked,
@@ -126,17 +161,30 @@ const PostDetailPage = () => {
         likes_count: likesCount,
         likesCount: likesCount,
       }));
+
+      // localStorage 동기화
+      let likedIds = getLikedPostIds();
+      if (liked) {
+        if (!likedIds.includes(post.id)) likedIds.push(post.id);
+      } else {
+        likedIds = likedIds.filter((pid) => pid !== post.id);
+      }
+      setLikedPostIds(likedIds);
     } catch (error) {
       console.error("좋아요 실패:", error);
       alert("좋아요 처리에 실패했습니다.");
     }
   };
 
+  // --------------------
+  // 댓글 처리
+  // --------------------
   const handleAddComment = async (text) => {
     if (!currentUser) {
       alert("로그인 후 댓글을 작성할 수 있습니다.");
       return;
     }
+
     try {
       const response = await commentAPI.createComment(id, { content: text });
       const newComment = {
@@ -188,6 +236,9 @@ const PostDetailPage = () => {
     }
   };
 
+  // --------------------
+  // 게시글 옵션
+  // --------------------
   const handleEditPost = () => {
     navigate(`/posts/edit/${id}`);
     setShowOptions(false);
@@ -198,7 +249,7 @@ const PostDetailPage = () => {
       try {
         await postAPI.deletePost(id);
         navigate("/main", { replace: true });
-      } catch (error) {
+      } catch {
         alert("삭제 실패");
       }
     }
@@ -210,7 +261,6 @@ const PostDetailPage = () => {
       (currentUser?.id &&
         post.user?.id &&
         String(currentUser.id) === String(post.user.id)) ||
-      currentUser?.nickname === post.user?.nickname ||
       (post.user_id &&
         currentUser?.id &&
         String(post.user_id) === String(currentUser.id));
@@ -236,16 +286,13 @@ const PostDetailPage = () => {
   return (
     <div className="post-detail-page">
       <header className="detail-header">
-        <button
-          className="icon-btn back"
-          onClick={() => navigate("/main")}
-        ></button>
+        <button className="icon-btn back" onClick={() => navigate("/main")} />
         <span className="header-title">게시물</span>
         {((currentUser?.id &&
           post.user_id &&
           String(currentUser.id) === String(post.user_id)) ||
           post.user?.nickname === currentUser?.nickname) && (
-          <button className="icon-btn more" onClick={handleMoreClick}></button>
+          <button className="icon-btn more" onClick={handleMoreClick} />
         )}
         {showOptions && (
           <PostOptionMenu
@@ -258,12 +305,7 @@ const PostDetailPage = () => {
 
       <div className="detail-content">
         <div className="user-info">
-          {/* ★ 수정됨: 이미지 태그 대신 아이콘 사용 */}
-          <FaUserCircle
-            size={32}
-            color="#c7c7c7"
-            style={{ marginRight: "10px" }}
-          />
+          <FaUserCircle size={32} color="#c7c7c7" />
           <span className="username">{getDisplayName(post)}</span>
         </div>
 
@@ -283,23 +325,19 @@ const PostDetailPage = () => {
           <button
             className={`icon-btn heart ${isLiked ? "liked" : ""}`}
             onClick={toggleLike}
-          ></button>
+          />
           <button
             className="icon-btn comment"
             onClick={() => commentInputRef.current?.focus()}
-          ></button>
+          />
         </div>
 
         <div className="likes-info">
-          <span className="likes-count">좋아요 {likeCount}개</span>
-          <span className="comments-count">댓글 {commentCount}개</span>
+          <span>좋아요 {likeCount}개</span>
+          <span>댓글 {commentCount}개</span>
         </div>
 
-        <div className="caption-section">
-          <span className="caption-text" style={{ marginLeft: 0 }}>
-            {post.body}
-          </span>
-        </div>
+        <div className="caption-section">{post.body}</div>
 
         {getSafeTags(post.tags).length > 0 && (
           <div className="tags-section">

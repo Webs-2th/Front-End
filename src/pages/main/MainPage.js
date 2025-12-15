@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUserCircle } from "react-icons/fa"; // ★ 아이콘 임포트
+import { FaUserCircle } from "react-icons/fa";
 import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
 
-// 태그 데이터를 안전한 배열로 변환하는 헬퍼 함수
+// --------------------
+// 태그 안전 처리
+// --------------------
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -16,17 +18,36 @@ const getSafeTags = (tags) => {
   return [];
 };
 
+// --------------------
+// 좋아요 localStorage 헬퍼
+// --------------------
+const getLikedPostIds = () => {
+  try {
+    return JSON.parse(localStorage.getItem("likedPosts")) || [];
+  } catch {
+    return [];
+  }
+};
+
+const setLikedPostIds = (ids) => {
+  localStorage.setItem("likedPosts", JSON.stringify(ids));
+};
+
 const MainPage = () => {
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. 게시글 목록 + 내 정보 동시에 불러오기
+  // --------------------
+  // 게시글 + 내 정보 로딩
+  // --------------------
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+
+        const likedPostIds = getLikedPostIds();
 
         const [postsRes, userRes] = await Promise.allSettled([
           postAPI.getPosts(),
@@ -36,7 +57,14 @@ const MainPage = () => {
         // 게시글 처리
         if (postsRes.status === "fulfilled") {
           const items = postsRes.value.data.items || postsRes.value.data || [];
-          const validPosts = items.filter((post) => !post.deleted_at);
+          const validPosts = items
+            .filter((post) => !post.deleted_at)
+            .map((post) => ({
+              ...post,
+              // ✅ localStorage 기준 좋아요 상태 복원
+              isLiked: likedPostIds.includes(post.id),
+            }));
+
           setPosts(validPosts);
           console.log("불러온 게시물:", validPosts);
         }
@@ -56,7 +84,9 @@ const MainPage = () => {
     fetchData();
   }, []);
 
-  // 이미지 주소 안전하게 처리하는 함수
+  // --------------------
+  // 이미지 URL 보정
+  // --------------------
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -65,45 +95,62 @@ const MainPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // 사용자 이름 표시 로직
+  // --------------------
+  // 작성자 이름
+  // --------------------
   const getDisplayName = (post) => {
     if (post.user && post.user.nickname) return post.user.nickname;
     if (post.nickname) return post.nickname;
+
     const authorId = post.user_id || post.userId;
-    if (currentUser && authorId) {
-      if (String(currentUser.id) === String(authorId)) {
-        return currentUser.nickname || currentUser.username || "나";
-      }
+    if (
+      currentUser &&
+      authorId &&
+      String(currentUser.id) === String(authorId)
+    ) {
+      return currentUser.nickname || currentUser.username || "나";
     }
+
     return "익명 사용자";
   };
 
-  // 좋아요 토글 기능
+  // --------------------
+  // 좋아요 토글
+  // --------------------
   const toggleLike = async (id) => {
     if (!currentUser) {
       alert("로그인이 필요합니다.");
       return;
     }
+
     try {
       const response = await postAPI.togglePostLike(id);
-      // 서버 응답: { liked: boolean, likesCount: integer }
       const { liked, likesCount } = response.data;
 
+      // UI 즉시 반영
       setPosts((prevPosts) =>
-        prevPosts.map((post) => {
-          if (post.id === id) {
-            return {
-              ...post,
-              isLiked: liked,
-              liked: liked,
-              is_liked: liked,
-              likes_count: likesCount,
-              likesCount: likesCount,
-            };
-          }
-          return post;
-        })
+        prevPosts.map((post) =>
+          post.id === id
+            ? {
+                ...post,
+                isLiked: liked,
+                liked: liked,
+                is_liked: liked,
+                likes_count: likesCount,
+                likesCount: likesCount,
+              }
+            : post
+        )
       );
+
+      // localStorage 동기화
+      let likedIds = getLikedPostIds();
+      if (liked) {
+        if (!likedIds.includes(id)) likedIds.push(id);
+      } else {
+        likedIds = likedIds.filter((postId) => postId !== id);
+      }
+      setLikedPostIds(likedIds);
     } catch (error) {
       console.error("좋아요 실패:", error);
       alert("좋아요 처리에 실패했습니다.");
@@ -136,9 +183,7 @@ const MainPage = () => {
       )}
 
       {posts.map((post) => {
-        // 3가지 변수명 모두 체크
         const isLiked = post.isLiked || post.liked || post.is_liked || false;
-
         const likeCount =
           post.likes_count ?? post.likesCount ?? post.likes ?? 0;
         const commentCount = post.comment_count ?? post.commentCount ?? 0;
@@ -147,7 +192,6 @@ const MainPage = () => {
           <div className="post-card" key={post.id}>
             {/* 헤더 */}
             <div className="post-header">
-              {/* ★ 수정됨: 이미지 태그 대신 아이콘 사용 */}
               <FaUserCircle
                 size={32}
                 color="#c7c7c7"
@@ -156,7 +200,7 @@ const MainPage = () => {
               <span className="header-username">{getDisplayName(post)}</span>
             </div>
 
-            {/* 이미지 영역 */}
+            {/* 이미지 */}
             {post.images && post.images.length > 0 && (
               <div
                 className="post-image"
@@ -173,7 +217,7 @@ const MainPage = () => {
               </div>
             )}
 
-            {/* 아이콘 + 숫자 영역 */}
+            {/* 액션 */}
             <div className="post-actions">
               <div className="action-group">
                 <button
@@ -182,7 +226,7 @@ const MainPage = () => {
                     e.stopPropagation();
                     toggleLike(post.id);
                   }}
-                ></button>
+                />
                 <span className="count-text">{likeCount}</span>
               </div>
 
@@ -190,7 +234,7 @@ const MainPage = () => {
                 <button
                   className="icon-btn comment"
                   onClick={() => goToDetail(post.id)}
-                ></button>
+                />
                 <span className="count-text">{commentCount}</span>
               </div>
             </div>
@@ -208,30 +252,12 @@ const MainPage = () => {
                 </span>
               </div>
 
-              {/* 해시태그 */}
+              {/* 태그 */}
               {getSafeTags(post.tags).length > 0 && (
-                <div
-                  className="tags"
-                  style={{
-                    marginTop: "8px",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "5px",
-                  }}
-                >
+                <div className="tags">
                   {getSafeTags(post.tags).map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="tag-item"
-                      style={{
-                        color: "#00376b",
-                        cursor: "pointer",
-                        fontSize: "14px",
-                      }}
-                    >
-                      {tag.trim().startsWith("#")
-                        ? tag.trim()
-                        : `#${tag.trim()}`}
+                    <span key={idx} className="tag-item">
+                      {tag.startsWith("#") ? tag : `#${tag}`}
                     </span>
                   ))}
                 </div>
