@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { FaUserCircle } from "react-icons/fa"; // ★ 아이콘 임포트
 import { postAPI, authAPI, commentAPI } from "../../api/api";
 import CommentSection from "../../components/CommentSection";
 import PostOptionMenu from "./PostOptionMenu";
@@ -98,19 +99,6 @@ const PostDetailPage = () => {
       return currentUser.nickname || "나";
     }
     return "익명 사용자";
-  };
-
-  const getProfileImage = (postObj) => {
-    if (!postObj)
-      return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
-    if (postObj.user && postObj.user.profile_image_url) {
-      return getImageUrl(postObj.user.profile_image_url);
-    }
-    const authorId = postObj.user_id || postObj.userId;
-    if (currentUser && String(currentUser.id) === String(authorId)) {
-      return getImageUrl(currentUser.profile_image_url);
-    }
-    return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
   const formatDate = (dateString) => {
@@ -248,7 +236,6 @@ const PostDetailPage = () => {
   return (
     <div className="post-detail-page">
       <header className="detail-header">
-        {/* ★ 수정됨: 뒤로가기 버튼 클릭 시 무조건 /main 으로 이동 */}
         <button
           className="icon-btn back"
           onClick={() => navigate("/main")}
@@ -271,10 +258,11 @@ const PostDetailPage = () => {
 
       <div className="detail-content">
         <div className="user-info">
-          <img
-            src={getProfileImage(post)}
-            alt="profile"
-            className="profile-img"
+          {/* ★ 수정됨: 이미지 태그 대신 아이콘 사용 */}
+          <FaUserCircle
+            size={32}
+            color="#c7c7c7"
+            style={{ marginRight: "10px" }}
           />
           <span className="username">{getDisplayName(post)}</span>
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaUserCircle } from "react-icons/fa"; // ★ 아이콘 임포트
 import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
 
@@ -77,18 +78,6 @@ const MainPage = () => {
     return "익명 사용자";
   };
 
-  // 프로필 이미지 표시 로직
-  const getProfileImage = (post) => {
-    if (post.user && post.user.profile_image_url) {
-      return getImageUrl(post.user.profile_image_url);
-    }
-    const authorId = post.user_id || post.userId;
-    if (currentUser && String(currentUser.id) === String(authorId)) {
-      return getImageUrl(currentUser.profile_image_url);
-    }
-    return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
-  };
-
   // 좋아요 토글 기능
   const toggleLike = async (id) => {
     if (!currentUser) {
@@ -105,7 +94,6 @@ const MainPage = () => {
           if (post.id === id) {
             return {
               ...post,
-              // 화면 갱신을 위해 모든 관련 필드를 최신 상태로 덮어씌움
               isLiked: liked,
               liked: liked,
               is_liked: liked,
@@ -151,7 +139,6 @@ const MainPage = () => {
         // 3가지 변수명 모두 체크
         const isLiked = post.isLiked || post.liked || post.is_liked || false;
 
-        // 문법 에러 수정됨 (?? 연산자 통일)
         const likeCount =
           post.likes_count ?? post.likesCount ?? post.likes ?? 0;
         const commentCount = post.comment_count ?? post.commentCount ?? 0;
@@ -160,10 +147,11 @@ const MainPage = () => {
           <div className="post-card" key={post.id}>
             {/* 헤더 */}
             <div className="post-header">
-              <img
-                src={getProfileImage(post)}
-                alt="profile"
-                className="header-profile-img"
+              {/* ★ 수정됨: 이미지 태그 대신 아이콘 사용 */}
+              <FaUserCircle
+                size={32}
+                color="#c7c7c7"
+                style={{ marginRight: "10px" }}
               />
               <span className="header-username">{getDisplayName(post)}</span>
             </div>
