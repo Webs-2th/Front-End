@@ -8,7 +8,6 @@ const MyPage = () => {
   const fileInputRef = useRef(null);
 
   const [user, setUser] = useState(null);
-
   const [editForm, setEditForm] = useState({
     nickname: "",
     bio: "",
@@ -22,7 +21,7 @@ const MyPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // ★ 1. 데이터 불러오기 및 필터링
+  // ★ 데이터 불러오기 및 필터링
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -36,20 +35,27 @@ const MyPage = () => {
         const userData = userRes.data;
         setUser(userData);
 
-        // --- ★ 게시물 필터링 로직 추가 ★ ---
-        // 1. 서버에서 받은 원본 리스트
+        // 1. 내 게시물 필터링 (삭제된 글 제외)
         const rawPosts = postsRes.data.items || postsRes.data || [];
-        // 2. deleted_at(삭제일)이 '없는'(=null) 것만 남김
         const validPosts = rawPosts.filter((post) => !post.deleted_at);
         setMyPosts(validPosts);
 
-        // --- ★ 댓글 필터링 로직 추가 ★ ---
+        // 2. ★ 내 댓글 필터링 (여기가 핵심!) ★
         const rawComments = commentsRes.data.items || commentsRes.data || [];
-        // 2. deleted_at이 없고, 원본 게시글(post) 정보가 살아있는 것만 남김 (안전장치)
+
         const validComments = rawComments.filter((comment) => {
-          // 댓글 자체가 삭제되지 않았고 && 게시글이 null이 아니어야 함
-          return !comment.deleted_at && comment.post !== null;
+          // 1) 댓글 자체가 삭제된 경우 제외
+          if (comment.deleted_at) return false;
+
+          // 2) 연결된 게시글 정보(post)가 아예 없는 경우 제외 (게시글 완전 삭제됨)
+          if (!comment.post) return false;
+
+          // 3) 연결된 게시글이 soft delete(휴지통) 상태인 경우 제외
+          if (comment.post.deleted_at) return false;
+
+          return true;
         });
+
         setMyComments(validComments);
       } catch (error) {
         console.error("마이페이지 로딩 실패:", error);
@@ -63,7 +69,7 @@ const MyPage = () => {
     fetchData();
   }, [navigate]);
 
-  // 이미지 주소 처리 함수
+  // --- 기존 코드 유지 ---
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -73,12 +79,10 @@ const MyPage = () => {
   };
 
   const goToDetail = (id) => {
-    // 만약 게시글 ID가 없으면 이동하지 않음 (예외 처리)
     if (!id) return;
     navigate(`/posts/${id}`);
   };
 
-  // ... (이하 프로필 수정 및 렌더링 코드는 기존과 동일) ...
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
@@ -87,16 +91,13 @@ const MyPage = () => {
   const handleProfileImgChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     try {
       const formData = new FormData();
       formData.append("image", file);
       const res = await uploadAPI.uploadImage(formData);
-      const uploadedUrl = res.data.url;
-      setEditForm((prev) => ({ ...prev, profile_image_url: uploadedUrl }));
+      setEditForm((prev) => ({ ...prev, profile_image_url: res.data.url }));
     } catch (error) {
-      console.error("이미지 업로드 실패:", error);
-      alert("이미지 업로드에 실패했습니다.");
+      console.error("실패:", error);
     }
   };
 
@@ -116,7 +117,6 @@ const MyPage = () => {
       setIsEditing(false);
       alert("프로필이 수정되었습니다.");
     } catch (error) {
-      console.error("프로필 수정 실패:", error);
       alert("수정에 실패했습니다.");
     }
   };
@@ -212,7 +212,6 @@ const MyPage = () => {
         >
           <div className="tab-icon grid"></div>
         </div>
-
         <div
           className={`tab-item ${activeTab === "comments" ? "active" : ""}`}
           onClick={() => setActiveTab("comments")}
@@ -254,7 +253,6 @@ const MyPage = () => {
                   onClick={() => comment.post && goToDetail(comment.postId)}
                 >
                   <div className="comment-thumb">
-                    {/* comment.post가 null이 아닐 때만 이미지 렌더링 */}
                     {comment.post?.images?.[0] ? (
                       <img
                         src={getImageUrl(comment.post.images[0].url)}

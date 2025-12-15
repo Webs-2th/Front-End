@@ -1,21 +1,33 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { postAPI, authAPI } from "../../api/api"; // authAPI 추가
+import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
+
+// ★ [핵심 수정] 태그 데이터를 안전한 배열로 변환하는 헬퍼 함수
+// DB에서 문자열("태그1,태그2")로 오든, 배열(['태그1'])로 오든, null로 오든 에러 없이 배열로 반환
+const getSafeTags = (tags) => {
+  if (Array.isArray(tags)) return tags;
+  if (typeof tags === "string") {
+    return tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t !== "");
+  }
+  return [];
+};
 
 const MainPage = () => {
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null); // 현재 로그인한 사용자 정보
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ★ 1. 게시글 목록 + 내 정보 동시에 불러오기
+  // 1. 게시글 목록 + 내 정보 동시에 불러오기
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // 게시글과 내 정보를 병렬로 요청 (하나가 실패해도 나머지는 로드되도록 처리)
         const [postsRes, userRes] = await Promise.allSettled([
           postAPI.getPosts(),
           authAPI.getMe(),
@@ -23,13 +35,14 @@ const MainPage = () => {
 
         // 게시글 처리
         if (postsRes.status === "fulfilled") {
-          const postList =
-            postsRes.value.data.items || postsRes.value.data || [];
-          setPosts(postList);
-          console.log("불러온 게시물:", postList);
+          const items = postsRes.value.data.items || postsRes.value.data || [];
+          // 삭제된 게시물(deleted_at이 있는 경우) 제외 필터링
+          const validPosts = items.filter((post) => !post.deleted_at);
+          setPosts(validPosts);
+          console.log("불러온 게시물:", validPosts);
         }
 
-        // 내 정보 처리 (로그인 상태라면 정보 저장)
+        // 내 정보 처리
         if (userRes.status === "fulfilled" && userRes.value.data) {
           setCurrentUser(userRes.value.data);
           console.log("현재 로그인한 유저:", userRes.value.data);
@@ -44,20 +57,23 @@ const MainPage = () => {
     fetchData();
   }, []);
 
-  // ★ 사용자 이름 표시 우선순위 로직 (닉네임 > 유저네임 > 이름 > 이메일 > 익명)
-  const getDisplayName = (user, userId) => {
-    // 1. 게시물에 유저 정보가 있는 경우
-    if (user) {
-      return (
-        user.nickname ||
-        user.username ||
-        user.name ||
-        (user.email ? user.email.split("@")[0] : "익명 사용자")
-      );
+  // 사용자 이름 표시 로직
+  const getDisplayName = (user, authorId) => {
+    // 1. 게시물 객체 안에 유저 정보가 있는 경우
+    if (user && (user.nickname || user.username || user.name)) {
+      return user.nickname || user.username || user.name;
     }
-    // 2. 유저 정보가 없지만(백엔드 누락 등), 내 글인 경우 (ID 매칭 시도)
-    if (currentUser && userId === currentUser.id) {
-      return currentUser.nickname || currentUser.username || "나(정보 없음)";
+
+    // 2. 유저 정보가 없어도 작성자 ID가 '나'와 같다면 내 닉네임 표시
+    if (currentUser && authorId) {
+      if (String(currentUser.id) === String(authorId)) {
+        return currentUser.nickname || currentUser.username || "나";
+      }
+    }
+
+    // 3. 이메일만 있는 경우
+    if (user && user.email) {
+      return user.email.split("@")[0];
     }
 
     return "익명 사용자";
@@ -119,13 +135,12 @@ const MainPage = () => {
             <img
               src={
                 post.user?.profile_image_url ||
+                currentUser?.profile_image_url || // 작성자 이미지가 없으면 내 이미지(내 글일 경우 대비)
                 "https://cdn-icons-png.flaticon.com/512/847/847969.png"
               }
               alt="profile"
               className="header-profile-img"
             />
-
-            {/* ★ 수정된 이름 표시 영역 ★ */}
             <span className="header-username">
               {getDisplayName(post.user, post.user_id || post.userId)}
             </span>
@@ -175,7 +190,6 @@ const MainPage = () => {
           <div className="post-content">
             <div className="caption">
               <span className="caption-username">
-                {/* ★ 여기도 수정된 이름 로직 적용 ★ */}
                 {getDisplayName(post.user, post.user_id || post.userId)}
               </span>
               <span
@@ -187,8 +201,9 @@ const MainPage = () => {
               </span>
             </div>
 
-            {/* 해시태그 영역 */}
-            {post.tags && post.tags.length > 0 && (
+            {/* ★ 수정된 해시태그 영역 ★ */}
+            {/* getSafeTags 함수를 통해 안전하게 배열로 변환된 태그만 렌더링 */}
+            {getSafeTags(post.tags).length > 0 && (
               <div
                 className="tags"
                 style={{
@@ -198,7 +213,7 @@ const MainPage = () => {
                   gap: "5px",
                 }}
               >
-                {post.tags.map((tag, idx) => (
+                {getSafeTags(post.tags).map((tag, idx) => (
                   <span
                     key={idx}
                     className="tag-item"
@@ -208,7 +223,8 @@ const MainPage = () => {
                       fontSize: "14px",
                     }}
                   >
-                    {tag.startsWith("#") ? tag : `#${tag}`}
+                    {/* 태그에 #이 없으면 붙여서 표시 */}
+                    {tag.trim().startsWith("#") ? tag.trim() : `#${tag.trim()}`}
                   </span>
                 ))}
               </div>

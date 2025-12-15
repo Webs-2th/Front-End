@@ -5,6 +5,17 @@ import CommentSection from "../../components/CommentSection";
 import PostOptionMenu from "./PostOptionMenu";
 import "./PostDetailPage.css";
 
+const getSafeTags = (tags) => {
+  if (Array.isArray(tags)) return tags;
+  if (typeof tags === "string") {
+    return tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t !== "");
+  }
+  return [];
+};
+
 const PostDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -16,30 +27,41 @@ const PostDetailPage = () => {
 
   const commentInputRef = useRef(null);
 
-  // 데이터 불러오기
+  // ★ 1. 데이터 불러오기 (게시글 + 내 정보 + 댓글 목록)
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // 게시물 정보와 내 정보를 동시에 가져옴
-        const [postRes, userRes] = await Promise.allSettled([
+
+        // 게시글, 댓글목록, 내 정보를 한번에 요청
+        const [postRes, commentsRes, userRes] = await Promise.allSettled([
           postAPI.getPostById(id),
+          commentAPI.getComments(id),
           authAPI.getMe(),
         ]);
 
-        // 1. 게시물 데이터 설정
+        // 1. 게시글 데이터 처리
         if (postRes.status === "fulfilled") {
-          setPost(postRes.value.data);
-          // 디버깅용 로그: 브라우저 콘솔(F12)에서 확인해보세요!
-          console.log("상세 게시물 데이터:", postRes.value.data);
+          const fetchedPost = postRes.value.data;
+
+          // 2. ★ 가져온 댓글 목록을 게시글 객체 안에 합치기
+          if (commentsRes.status === "fulfilled") {
+            const fetchedComments =
+              commentsRes.value.data.items || commentsRes.value.data || [];
+            fetchedPost.comments = fetchedComments;
+            console.log("불러온 댓글:", fetchedComments);
+          } else {
+            fetchedPost.comments = [];
+          }
+
+          setPost(fetchedPost);
         } else {
           throw new Error("게시물을 불러오지 못했습니다.");
         }
 
-        // 2. 내 정보 설정
+        // 3. 내 정보 처리
         if (userRes.status === "fulfilled" && userRes.value.data) {
           setCurrentUser(userRes.value.data);
-          console.log("내 정보:", userRes.value.data);
         }
       } catch (error) {
         console.error("데이터 로딩 실패:", error);
@@ -49,29 +71,22 @@ const PostDetailPage = () => {
         setLoading(false);
       }
     };
+
     if (id) fetchData();
   }, [id, navigate]);
 
-  // ★ [핵심 수정] 이름 표시 로직 강화
   const getDisplayName = (user, authorId) => {
-    // 1순위: 게시물 안에 유저 정보가 제대로 들어있는 경우
     if (user && (user.nickname || user.username || user.name)) {
       return user.nickname || user.username || user.name;
     }
-
-    // 2순위: 유저 정보가 없어도, 작성자 ID가 '나(currentUser)'와 같다면 내 닉네임 표시
     if (currentUser && authorId) {
-      // 숫자/문자 형식이 다를 수 있으므로 String으로 변환해 비교
       if (String(currentUser.id) === String(authorId)) {
         return currentUser.nickname || currentUser.username || "나";
       }
     }
-
-    // 3순위: 이메일이라도 있으면 앞부분 표시
     if (user && user.email) {
       return user.email.split("@")[0];
     }
-
     return "익명 사용자";
   };
 
@@ -98,7 +113,7 @@ const PostDetailPage = () => {
     });
   };
 
-  // --- 댓글 관련 함수들은 기존과 동일 ---
+  // 댓글 작성 (화면 즉시 반영)
   const handleAddComment = async (text) => {
     try {
       const response = await commentAPI.createComment(id, { content: text });
@@ -106,7 +121,7 @@ const PostDetailPage = () => {
         ...response.data,
         id: response.data?.id || Date.now(),
         content: text,
-        user: currentUser, // 여기서 내 정보를 넣어야 댓글에 바로 닉네임이 뜸
+        user: currentUser,
         created_at: new Date().toISOString(),
       };
       setPost((prev) => ({
@@ -147,7 +162,6 @@ const PostDetailPage = () => {
     }
   };
 
-  // --- 게시글 수정/삭제 ---
   const handleEditPost = () => {
     navigate(`/posts/edit/${id}`);
     setShowOptions(false);
@@ -171,7 +185,7 @@ const PostDetailPage = () => {
       currentUser?.nickname === post.user?.nickname ||
       (post.user_id &&
         currentUser?.id &&
-        String(post.user_id) === String(currentUser.id)); // ID 직접 비교 추가
+        String(post.user_id) === String(currentUser.id));
 
     if (isMyPost) {
       setShowOptions(true);
@@ -189,7 +203,6 @@ const PostDetailPage = () => {
         <button className="icon-btn back" onClick={() => navigate(-1)}></button>
         <span className="header-title">게시물</span>
 
-        {/* 더보기 버튼 표시 조건 강화 */}
         {((currentUser?.id &&
           post.user_id &&
           String(currentUser.id) === String(post.user_id)) ||
@@ -211,14 +224,12 @@ const PostDetailPage = () => {
           <img
             src={
               post.user?.profile_image_url ||
-              currentUser?.profile_image_url || // 작성자 프사 없으면 내 프사라도 (내 글일 경우)
+              currentUser?.profile_image_url ||
               "https://cdn-icons-png.flaticon.com/512/847/847969.png"
             }
             alt="profile"
             className="profile-img"
           />
-
-          {/* ★ 여기가 핵심: 작성자 ID(user_id)까지 넘겨서 비교 ★ */}
           <span className="username">
             {getDisplayName(post.user, post.user_id || post.userId)}
           </span>
@@ -236,7 +247,6 @@ const PostDetailPage = () => {
           </div>
         )}
 
-        {/* ... (이하 버튼, 캡션 등 기존 UI 유지) ... */}
         <div className="action-buttons">
           <button
             className={`icon-btn heart ${post.isLiked ? "liked" : ""}`}
@@ -261,9 +271,10 @@ const PostDetailPage = () => {
           </span>
         </div>
 
-        {post.tags && post.tags.length > 0 && (
+        {/* ★ 수정된 해시태그 영역 (getSafeTags 적용) ★ */}
+        {getSafeTags(post.tags).length > 0 && (
           <div className="tags-section">
-            {post.tags.map((tag, idx) => (
+            {getSafeTags(post.tags).map((tag, idx) => (
               <span key={idx} className="tag-item">
                 {tag.startsWith("#") ? tag : `#${tag}`}
               </span>

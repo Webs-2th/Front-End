@@ -231,6 +231,8 @@
 }
 
 .no-content {
+  grid-column: 1 / -1;
+
   padding: 40px;
   text-align: center;
   color: #8e8e8e;
