@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { authAPI, userAPI, uploadAPI } from "../../api/api";
+import { authAPI, userAPI, uploadAPI, removeCookie } from "../../api/api"; // removeCookie 추가
 import "./MyPage.css";
 
 const MyPage = () => {
@@ -21,6 +21,20 @@ const MyPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // --- 로그아웃 핸들러 추가 ---
+  const handleLogout = useCallback(() => {
+    // 1. 저장된 토큰 제거
+    removeCookie("accessToken"); // 쿠키 토큰 제거
+    localStorage.removeItem("accessToken"); // 로컬스토리지 토큰 제거 (비상용)
+
+    // 2. 상태 초기화 및 페이지 이동
+    setUser(null);
+    setMyPosts([]);
+    setMyComments([]);
+    alert("로그아웃 되었습니다.");
+    navigate("/login"); // 로그인 페이지로 이동
+  }, [navigate]);
+
   // ★ 데이터 불러오기 및 필터링
   useEffect(() => {
     const fetchData = async () => {
@@ -40,7 +54,7 @@ const MyPage = () => {
         const validPosts = rawPosts.filter((post) => !post.deleted_at);
         setMyPosts(validPosts);
 
-        // 2. ★ 내 댓글 필터링 (여기가 핵심!) ★
+        // 2. 내 댓글 필터링 (여기가 핵심!)
         const rawComments = commentsRes.data.items || commentsRes.data || [];
 
         const validComments = rawComments.filter((comment) => {
@@ -59,15 +73,15 @@ const MyPage = () => {
         setMyComments(validComments);
       } catch (error) {
         console.error("마이페이지 로딩 실패:", error);
-        alert("로그인이 필요하거나 정보를 불러올 수 없습니다.");
-        navigate("/login");
+        // 오류 발생 시 로그아웃 처리 및 로그인 페이지로 리다이렉트
+        handleLogout();
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [navigate]);
+  }, [navigate, handleLogout]); // handleLogout 의존성 추가
 
   // --- 기존 코드 유지 ---
   const getImageUrl = (url) => {
@@ -185,8 +199,17 @@ const MyPage = () => {
             <>
               <div className="username-row">
                 <span className="username">{user.nickname || "익명"}</span>
+              </div>
+              <div className="button-row">
+                {" "}
+                {/* 버튼을 담을 새로운 Row */}
                 <button className="edit-profile-btn" onClick={startEditing}>
                   프로필 편집
+                </button>
+                <button className="logout-btn" onClick={handleLogout}>
+                  {" "}
+                  {/* 로그아웃 버튼 */}
+                  로그아웃
                 </button>
               </div>
               <div className="stats-row">
@@ -204,7 +227,7 @@ const MyPage = () => {
           )}
         </div>
       </div>
-
+      {/* ... (나머지 UI 코드는 동일) ... */}
       <div className="profile-tabs">
         <div
           className={`tab-item ${activeTab === "posts" ? "active" : ""}`}
