@@ -117,8 +117,8 @@
 
 .post-image-container {
   width: 100%;
-  height: 400px; /* 메인 페이지와 동일한 높이로 고정 */
-  background-color: #fafafa; /* 빈 공간은 연회색 처리 */
+  height: 400px;
+  background-color: #fafafa;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -126,11 +126,10 @@
   border-bottom: 1px solid #efefef;
 }
 
-/* 실제 이미지 */
 .post-image-container img {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* 비율 유지하며 전체 다 보여주기 */
+  object-fit: contain;
   display: block;
 }
 
@@ -141,23 +140,27 @@
   gap: 16px;
 }
 
-/* 통계 (좋아요/댓글 수) */
+/* ---- ★ 수정된 통계 영역 (인스타 스타일) ★ ---- */
 .likes-info {
   padding: 0 10px;
-  font-size: 14px;
   margin-bottom: 8px;
   display: flex;
-  align-items: center;
+  flex-direction: column; /* 세로 배치 */
+  align-items: flex-start;
+  gap: 4px; /* 줄 간격 */
 }
 
 .likes-count {
-  font-weight: 600;
-  margin-right: 12px;
+  font-weight: 600; /* 굵게 */
+  font-size: 14px;
   color: #262626;
+  cursor: pointer;
 }
 
 .comments-count {
-  color: #8e8e8e;
+  font-size: 14px;
+  color: #8e8e8e; /* 회색 처리 */
+  cursor: pointer;
 }
 
 .caption-section {

@@ -332,9 +332,10 @@ const PostDetailPage = () => {
           />
         </div>
 
+        {/* ★ 수정된 부분: className 추가 ★ */}
         <div className="likes-info">
-          <span>좋아요 {likeCount}개</span>
-          <span>댓글 {commentCount}개</span>
+          <span className="likes-count">좋아요 {likeCount}개</span>
+          <span className="comments-count">댓글 {commentCount}개</span>
         </div>
 
         <div className="caption-section">{post.body}</div>
