@@ -106,18 +106,33 @@ const PostDetailPage = () => {
     return dateString.split("T")[0];
   };
 
-  const toggleLike = () => {
+  // ★ 좋아요 토글 기능 (API 연동 포함)
+  const toggleLike = async () => {
     if (!post) return;
-    const isLiked = !post.isLiked;
-    setPost({
-      ...post,
-      isLiked: isLiked,
-      likes: isLiked ? (post.likes || 0) + 1 : (post.likes || 0) - 1,
-    });
+    try {
+      // 1. 서버 API 호출 (togglePostLike는 postAPI에 정의되어 있어야 함)
+      await postAPI.togglePostLike(post.id);
+
+      // 2. 성공 시에만 로컬 상태 업데이트
+      const isLiked = !post.isLiked;
+      setPost({
+        ...post,
+        isLiked: isLiked,
+        // 좋아요 상태에 따라 카운트 증가/감소
+        likes: isLiked ? (post.likes || 0) + 1 : (post.likes || 0) - 1,
+      });
+    } catch (error) {
+      console.error("좋아요 실패:", error);
+      alert("좋아요 처리에 실패했습니다. 로그인했는지 확인해주세요.");
+    }
   };
 
   // 댓글 작성 (화면 즉시 반영)
   const handleAddComment = async (text) => {
+    if (!currentUser) {
+      alert("로그인 후 댓글을 작성할 수 있습니다.");
+      return;
+    }
     try {
       const response = await commentAPI.createComment(id, { content: text });
       const newComment = {
@@ -125,6 +140,8 @@ const PostDetailPage = () => {
         id: response.data?.id || Date.now(),
         content: text,
         user: currentUser,
+        // ★ 서버 응답에 user_id가 누락될 경우를 대비해 현재 로그인 ID를 추가
+        user_id: currentUser.id,
         created_at: new Date().toISOString(),
       };
       setPost((prev) => ({

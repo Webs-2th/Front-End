@@ -102,6 +102,9 @@ export const postAPI = {
 
   // 게시글 삭제
   deletePost: (postId) => api.delete(`/posts/${postId}`),
+
+  // ★ 추가: 좋아요/좋아요 취소 토글 API
+  togglePostLike: (postId) => api.post(`/posts/${postId}/like-toggle`),
 };
 
 /**

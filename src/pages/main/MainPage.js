@@ -55,7 +55,7 @@ const MainPage = () => {
     fetchData();
   }, []);
 
-  // ★ [핵심 수정] 사용자 이름 표시 로직 강화
+  // ★ 사용자 이름 표시 로직
   const getDisplayName = (user, authorId) => {
     // 1순위: user 객체가 존재할 경우, 최대한 이름을 찾아 반환 (다른 사용자 닉네임 표시)
     if (user) {
@@ -85,20 +85,31 @@ const MainPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  const toggleLike = (id) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((post) => {
-        if (post.id === id) {
-          const isLiked = !post.isLiked;
-          return {
-            ...post,
-            isLiked: isLiked,
-            likes: isLiked ? (post.likes || 0) + 1 : (post.likes || 0) - 1,
-          };
-        }
-        return post;
-      })
-    );
+  // ★ 좋아요 토글 기능 (API 연동 포함)
+  const toggleLike = async (id) => {
+    try {
+      // 1. 서버 API 호출 (togglePostLike는 postAPI에 정의되어 있어야 함)
+      await postAPI.togglePostLike(id);
+
+      // 2. 성공 시에만 로컬 상태 업데이트
+      setPosts((prevPosts) =>
+        prevPosts.map((post) => {
+          if (post.id === id) {
+            const isLiked = !post.isLiked;
+            return {
+              ...post,
+              isLiked: isLiked,
+              // 좋아요 상태에 따라 카운트 증가/감소
+              likes: isLiked ? (post.likes || 0) + 1 : (post.likes || 0) - 1,
+            };
+          }
+          return post;
+        })
+      );
+    } catch (error) {
+      console.error("좋아요 실패:", error);
+      alert("좋아요 처리에 실패했습니다. 로그인했는지 확인해주세요.");
+    }
   };
 
   const goToDetail = (id) => {
