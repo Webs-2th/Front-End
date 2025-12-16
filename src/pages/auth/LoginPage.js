@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { authAPI, setCookie } from "../../api/api"; // api와 쿠키 함수 import
+import { authAPI, setCookie } from "../../api/api";
 import "./LoginPage.css";
 
 const LoginPage = () => {

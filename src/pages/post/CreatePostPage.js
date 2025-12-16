@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiArrowLeft } from "react-icons/fi"; // 아이콘이 없으면 텍스트로 대체 가능
+import { FiArrowLeft } from "react-icons/fi";
 import { postAPI, uploadAPI } from "../../api/api";
 import "./CreatePostPage.css";
 
@@ -30,7 +30,6 @@ const CreatePostPage = () => {
     const fetchPost = async () => {
       if (id) {
         try {
-          // ★ 이제 api.js에 함수가 추가되었으므로 에러가 나지 않습니다.
           const response = await postAPI.getPostDetail(id);
           const post = response.data;
 

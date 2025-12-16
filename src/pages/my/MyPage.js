@@ -82,7 +82,7 @@ const MyPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // ★ 상세 페이지 이동 함수
+  // 상세 페이지 이동 함수
   const goToDetail = (id) => {
     if (!id) {
       alert("게시물 정보를 찾을 수 없습니다.");
@@ -307,7 +307,7 @@ const MyPage = () => {
                 // 원본 게시물 객체 확인
                 const targetPost = comment.post || comment.Post;
 
-                // ★ ID 추출 로직 강화: post 객체 ID -> camelCase -> snake_case 순서로 확인
+                //  ID 추출 로직 강화: post 객체 ID -> camelCase -> snake_case 순서로 확인
                 const targetPostId =
                   targetPost?.id || comment.postId || comment.post_id;
 

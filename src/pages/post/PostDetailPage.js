@@ -16,9 +16,7 @@ const getSafeTags = (tags) => {
   return [];
 };
 
-// --------------------
 // ★ 좋아요 localStorage 헬퍼 (유저별 분리)
-// --------------------
 const getLikedPostIds = (userId) => {
   if (!userId) return [];
   try {
@@ -168,7 +166,7 @@ const PostDetailPage = () => {
         likesCount: likesCount,
       }));
 
-      // ★ 내 ID에 해당하는 로컬스토리지 업데이트
+      // 내 ID에 해당하는 로컬스토리지 업데이트
       let likedIds = getLikedPostIds(currentUser.id);
       if (liked) {
         if (!likedIds.some((pid) => String(pid) === String(post.id))) {

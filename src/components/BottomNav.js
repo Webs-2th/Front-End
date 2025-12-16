@@ -6,8 +6,6 @@ const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ★ 수정된 부분: 상세 페이지('/posts/숫자')에서는 하단바 숨기기
-  // (글쓰기 페이지 '/posts/create'는 제외하고, 상세글 볼 때만 숨김)
   const isPostDetailPage =
     location.pathname.startsWith("/posts/") &&
     location.pathname !== "/posts/create";

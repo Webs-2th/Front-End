@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { authAPI } from "../../api/api"; // api import
+import { authAPI } from "../../api/api";
 import "./SignupPage.css";
 
 const SignupPage = () => {
@@ -44,7 +44,6 @@ const SignupPage = () => {
       navigate("/login");
     } catch (err) {
       console.error(err);
-      // 백엔드 에러 메시지 처리 (409: 중복 등)
       if (err.response && err.response.status === 409) {
         setError("이미 사용 중인 이메일이나 닉네임입니다.");
       } else {

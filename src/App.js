@@ -14,22 +14,14 @@ function App() {
     <>
       <Routes>
         <Route path="/" element={<Navigate to="/login" />} />
-
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-
         <Route path="/main" element={<MainPage />} />
-
-        {/* 글 작성 페이지 */}
         <Route path="/posts/create" element={<CreatePostPage />} />
-
-        {/*추가된 부분: 글 수정 페이지 (작성 페이지 재사용)*/}
         <Route path="/posts/edit/:id" element={<CreatePostPage />} />
-
         <Route path="/posts/:id" element={<PostDetailPage />} />
         <Route path="/mypage" element={<MyPage />} />
       </Routes>
-
       <BottomNav />
     </>
   );

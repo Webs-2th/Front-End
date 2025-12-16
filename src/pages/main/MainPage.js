@@ -3,9 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
 
-// --------------------
 // 태그 안전 처리
-// --------------------
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -17,10 +15,8 @@ const getSafeTags = (tags) => {
   return [];
 };
 
-// --------------------
-// ★ 좋아요 localStorage 헬퍼 (유저별 분리)
-// --------------------
-const getLikedPostIds = (userId) => {
+// 좋아요 localStorage 헬퍼 (유저별 분리)
+getLikedPostIds = (userId) => {
   if (!userId) return []; // 로그인 안 했으면 빈 배열
   try {
     // 키 이름을 "likedPosts_유저ID"로 설정하여 계정별로 분리
@@ -41,9 +37,7 @@ const MainPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // --------------------
   // 게시글 + 내 정보 로딩
-  // --------------------
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -75,7 +69,7 @@ const MainPage = () => {
             .filter((post) => !post.deleted_at)
             .map((post) => ({
               ...post,
-              // ★ 내 ID로 저장된 로컬스토리지 목록에 있는지 확인
+              // 내 ID로 저장된 로컬스토리지 목록에 있는지 확인
               isLiked: likedPostIds.some(
                 (pid) => String(pid) === String(post.id)
               ),
@@ -94,9 +88,7 @@ const MainPage = () => {
     fetchData();
   }, []);
 
-  // --------------------
   // 이미지 URL 보정
-  // --------------------
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -133,9 +125,7 @@ const MainPage = () => {
     return "익명 사용자";
   };
 
-  // --------------------
   // 좋아요 토글
-  // --------------------
   const toggleLike = async (id) => {
     if (!currentUser) {
       alert("로그인이 필요합니다.");
@@ -160,7 +150,7 @@ const MainPage = () => {
         )
       );
 
-      // ★ 내 ID에 해당하는 로컬 스토리지 업데이트
+      // 내 ID에 해당하는 로컬 스토리지 업데이트
       let likedIds = getLikedPostIds(currentUser.id);
 
       if (liked) {

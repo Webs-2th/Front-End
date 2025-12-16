@@ -36,29 +36,20 @@ const CommentSection = ({
     return dateString.split("T")[0];
   };
 
-  // ★ [수정] 닉네임 표시 로직 강화
-  // 서버가 user 객체 안에 줄 수도 있고, 그냥 nickname 필드로 줄 수도 있어서 다 체크함
   const getDisplayName = (comment) => {
     return (
-      comment.user?.nickname || // 1순위: user 객체 안의 닉네임
-      comment.nickname || // 2순위: 댓글 객체 바로 아래 닉네임
-      comment.username || // 3순위: username 필드
-      "익명" // 없으면 익명
+      comment.user?.nickname || comment.nickname || comment.username || "익명"
     );
   };
 
-  // ★ [수정] 내 댓글인지 확인하는 로직 강화 (ID 비교 우선)
   const isMyComment = (comment) => {
     if (!currentUser) return false;
 
-    // 1. ID로 확실하게 비교 (가장 정확함)
-    // comment.user_id 혹은 comment.user.id 와 내 id 비교
     const commentUserId = comment.user_id || comment.userId || comment.user?.id;
     if (commentUserId && currentUser.id) {
       return String(commentUserId) === String(currentUser.id);
     }
 
-    // 2. ID가 없으면 닉네임으로 비교 (차선책)
     const authorName = getDisplayName(comment);
     return authorName === currentUser.nickname;
   };
@@ -71,7 +62,6 @@ const CommentSection = ({
         {comments.map((c, index) => (
           <div key={c.id || index} className="comment-item">
             <div className="comment-main">
-              {/* 작성자 닉네임 표시 함수 사용 */}
               <span className="comment-username">{getDisplayName(c)}</span>
 
               {editingId === c.id ? (
@@ -104,7 +94,6 @@ const CommentSection = ({
                   {formatDate(c.created_at || c.date)}
                 </span>
 
-                {/* 수정된 권한 체크 함수 사용 */}
                 {isMyComment(c) && (
                   <div className="comment-actions">
                     <button
