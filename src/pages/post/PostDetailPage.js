@@ -5,9 +5,6 @@ import CommentSection from "../../components/CommentSection";
 import PostOptionMenu from "./PostOptionMenu";
 import "./PostDetailPage.css";
 
-// --------------------
-// 태그 안전 처리
-// --------------------
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -20,18 +17,20 @@ const getSafeTags = (tags) => {
 };
 
 // --------------------
-// 좋아요 localStorage 헬퍼
+// ★ 좋아요 localStorage 헬퍼 (유저별 분리)
 // --------------------
-const getLikedPostIds = () => {
+const getLikedPostIds = (userId) => {
+  if (!userId) return [];
   try {
-    return JSON.parse(localStorage.getItem("likedPosts")) || [];
+    return JSON.parse(localStorage.getItem(`likedPosts_${userId}`)) || [];
   } catch {
     return [];
   }
 };
 
-const setLikedPostIds = (ids) => {
-  localStorage.setItem("likedPosts", JSON.stringify(ids));
+const setLikedPostIds = (userId, ids) => {
+  if (!userId) return;
+  localStorage.setItem(`likedPosts_${userId}`, JSON.stringify(ids));
 };
 
 const PostDetailPage = () => {
@@ -45,15 +44,10 @@ const PostDetailPage = () => {
 
   const commentInputRef = useRef(null);
 
-  // --------------------
-  // 데이터 로딩
-  // --------------------
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-
-        const likedPostIds = getLikedPostIds();
 
         const [postRes, commentsRes, userRes] = await Promise.allSettled([
           postAPI.getPostById(id),
@@ -61,14 +55,31 @@ const PostDetailPage = () => {
           authAPI.getMe(),
         ]);
 
-        // 게시글
+        // 1. 유저 정보 먼저 확인
+        let fetchedUser = null;
+        if (userRes.status === "fulfilled" && userRes.value.data) {
+          fetchedUser = userRes.value.data;
+          setCurrentUser(fetchedUser);
+        }
+
+        // 2. 해당 유저의 좋아요 목록 로드
+        const currentUserId = fetchedUser ? fetchedUser.id : null;
+        const likedPostIds = getLikedPostIds(currentUserId);
+
+        // 3. 게시글 처리
         if (postRes.status === "fulfilled") {
+          const rawPost = postRes.value.data;
+
+          // 내 목록에 이 글 ID가 있는지 확인
+          const amILiked = likedPostIds.some(
+            (pid) => String(pid) === String(id)
+          );
+
           const fetchedPost = {
-            ...postRes.value.data,
-            isLiked: likedPostIds.includes(Number(id)),
+            ...rawPost,
+            isLiked: amILiked,
           };
 
-          // 댓글
           let fetchedComments = [];
           if (commentsRes.status === "fulfilled") {
             fetchedComments =
@@ -84,11 +95,6 @@ const PostDetailPage = () => {
         } else {
           throw new Error("게시물 로딩 실패");
         }
-
-        // 내 정보
-        if (userRes.status === "fulfilled") {
-          setCurrentUser(userRes.value.data);
-        }
       } catch (error) {
         console.error("데이터 로딩 실패:", error);
         alert("게시물을 불러올 수 없습니다.");
@@ -101,9 +107,6 @@ const PostDetailPage = () => {
     if (id) fetchData();
   }, [id, navigate]);
 
-  // --------------------
-  // 이미지 URL 보정
-  // --------------------
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -112,30 +115,19 @@ const PostDetailPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // --------------------
-  // ★ 프로필 이미지 결정 로직 (수정됨)
-  // --------------------
   const getProfileImage = (postObj) => {
-    // 1. 내가 쓴 글이라면 내 최신 프사 우선
     const authorId = postObj.user_id || postObj.userId;
     if (currentUser && String(currentUser.id) === String(authorId)) {
       if (currentUser.profile_image_url) {
         return getImageUrl(currentUser.profile_image_url);
       }
     }
-
-    // 2. 남이 쓴 글이라면 게시글 정보 사용
     if (postObj.user && postObj.user.profile_image_url) {
       return getImageUrl(postObj.user.profile_image_url);
     }
-
-    // 3. 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
-  // --------------------
-  // 작성자 이름
-  // --------------------
   const getDisplayName = (postObj) => {
     if (!postObj) return "익명";
     if (postObj.user && postObj.user.nickname) return postObj.user.nickname;
@@ -158,9 +150,6 @@ const PostDetailPage = () => {
     return dateString.split("T")[0];
   };
 
-  // --------------------
-  // 좋아요 토글
-  // --------------------
   const toggleLike = async () => {
     if (!post) return;
     if (!currentUser) {
@@ -172,33 +161,29 @@ const PostDetailPage = () => {
       const response = await postAPI.togglePostLike(post.id);
       const { liked, likesCount } = response.data;
 
-      // UI 반영
       setPost((prev) => ({
         ...prev,
         isLiked: liked,
-        liked: liked,
-        is_liked: liked,
         likes_count: likesCount,
         likesCount: likesCount,
       }));
 
-      // localStorage 동기화
-      let likedIds = getLikedPostIds();
+      // ★ 내 ID에 해당하는 로컬스토리지 업데이트
+      let likedIds = getLikedPostIds(currentUser.id);
       if (liked) {
-        if (!likedIds.includes(post.id)) likedIds.push(post.id);
+        if (!likedIds.some((pid) => String(pid) === String(post.id))) {
+          likedIds.push(post.id);
+        }
       } else {
-        likedIds = likedIds.filter((pid) => pid !== post.id);
+        likedIds = likedIds.filter((pid) => String(pid) !== String(post.id));
       }
-      setLikedPostIds(likedIds);
+      setLikedPostIds(currentUser.id, likedIds);
     } catch (error) {
       console.error("좋아요 실패:", error);
       alert("좋아요 처리에 실패했습니다.");
     }
   };
 
-  // --------------------
-  // 댓글 처리
-  // --------------------
   const handleAddComment = async (text) => {
     if (!currentUser) {
       alert("로그인 후 댓글을 작성할 수 있습니다.");
@@ -256,9 +241,6 @@ const PostDetailPage = () => {
     }
   };
 
-  // --------------------
-  // 게시글 옵션
-  // --------------------
   const handleEditPost = () => {
     navigate(`/posts/edit/${id}`);
     setShowOptions(false);
@@ -295,7 +277,7 @@ const PostDetailPage = () => {
   if (loading) return <div className="loading">로딩 중...</div>;
   if (!post) return <div className="error">게시물이 존재하지 않습니다.</div>;
 
-  const isLiked = post.isLiked || post.liked || post.is_liked || false;
+  const isLikedState = !!post.isLiked;
   const likeCount = post.likes_count ?? post.likesCount ?? post.likes ?? 0;
   const commentCount =
     post.comment_count ??
@@ -307,7 +289,7 @@ const PostDetailPage = () => {
     <div className="post-detail-page">
       <header className="detail-header">
         <button className="icon-btn back" onClick={() => navigate("/main")} />
-        <span className="header-title">게시물</span>
+        <span className="header-title"></span>
         {((currentUser?.id &&
           post.user_id &&
           String(currentUser.id) === String(post.user_id)) ||
@@ -325,7 +307,6 @@ const PostDetailPage = () => {
 
       <div className="detail-content">
         <div className="user-info">
-          {/* ★ 프로필 이미지 표시 (onError 추가) */}
           <img
             src={getProfileImage(post)}
             alt="profile"
@@ -352,7 +333,7 @@ const PostDetailPage = () => {
 
         <div className="action-buttons">
           <button
-            className={`icon-btn heart ${isLiked ? "liked" : ""}`}
+            className={`icon-btn heart ${isLikedState ? "liked" : ""}`}
             onClick={toggleLike}
           />
           <button

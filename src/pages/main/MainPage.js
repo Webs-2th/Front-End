@@ -18,18 +18,21 @@ const getSafeTags = (tags) => {
 };
 
 // --------------------
-// 좋아요 localStorage 헬퍼
+// ★ 좋아요 localStorage 헬퍼 (유저별 분리)
 // --------------------
-const getLikedPostIds = () => {
+const getLikedPostIds = (userId) => {
+  if (!userId) return []; // 로그인 안 했으면 빈 배열
   try {
-    return JSON.parse(localStorage.getItem("likedPosts")) || [];
+    // 키 이름을 "likedPosts_유저ID"로 설정하여 계정별로 분리
+    return JSON.parse(localStorage.getItem(`likedPosts_${userId}`)) || [];
   } catch {
     return [];
   }
 };
 
-const setLikedPostIds = (ids) => {
-  localStorage.setItem("likedPosts", JSON.stringify(ids));
+const setLikedPostIds = (userId, ids) => {
+  if (!userId) return;
+  localStorage.setItem(`likedPosts_${userId}`, JSON.stringify(ids));
 };
 
 const MainPage = () => {
@@ -46,31 +49,40 @@ const MainPage = () => {
       try {
         setLoading(true);
 
-        const likedPostIds = getLikedPostIds();
-
+        // 1. 데이터 병렬 요청
         const [postsRes, userRes] = await Promise.allSettled([
           postAPI.getPosts(),
           authAPI.getMe(),
         ]);
 
-        // 게시글 처리
+        // 2. 유저 정보 먼저 확인 (ID가 필요함)
+        let fetchedUser = null;
+        if (userRes.status === "fulfilled" && userRes.value.data) {
+          fetchedUser = userRes.value.data;
+          setCurrentUser(fetchedUser);
+          console.log("현재 로그인한 유저:", fetchedUser);
+        }
+
+        // 3. 해당 유저의 좋아요 목록 가져오기 (비로그인이면 빈 배열)
+        const currentUserId = fetchedUser ? fetchedUser.id : null;
+        const likedPostIds = getLikedPostIds(currentUserId);
+
+        // 4. 게시글 처리
         if (postsRes.status === "fulfilled") {
           const items = postsRes.value.data.items || postsRes.value.data || [];
+
           const validPosts = items
             .filter((post) => !post.deleted_at)
             .map((post) => ({
               ...post,
-              isLiked: likedPostIds.includes(post.id),
+              // ★ 내 ID로 저장된 로컬스토리지 목록에 있는지 확인
+              isLiked: likedPostIds.some(
+                (pid) => String(pid) === String(post.id)
+              ),
             }));
 
           setPosts(validPosts);
           console.log("불러온 게시물:", validPosts);
-        }
-
-        // 내 정보 처리
-        if (userRes.status === "fulfilled" && userRes.value.data) {
-          setCurrentUser(userRes.value.data);
-          console.log("현재 로그인한 유저:", userRes.value.data);
         }
       } catch (error) {
         console.error("데이터 로딩 실패:", error);
@@ -93,31 +105,19 @@ const MainPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // --------------------
-  // ★ 프로필 이미지 결정 로직 (수정됨)
-  // --------------------
   const getProfileImage = (post) => {
-    // 1. 내가 쓴 글이라면, 현재 로그인한 유저의 최신 프사(currentUser)를 우선 사용
-    // (마이페이지에서 방금 바꿨을 때 즉시 반영되게 하기 위함)
     const authorId = post.user_id || post.userId;
     if (currentUser && String(currentUser.id) === String(authorId)) {
       if (currentUser.profile_image_url) {
         return getImageUrl(currentUser.profile_image_url);
       }
     }
-
-    // 2. 남이 쓴 글이라면, 게시글에 포함된 작성자 정보(post.user) 사용
     if (post.user && post.user.profile_image_url) {
       return getImageUrl(post.user.profile_image_url);
     }
-
-    // 3. 둘 다 없으면 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
-  // --------------------
-  // 작성자 이름
-  // --------------------
   const getDisplayName = (post) => {
     if (post.user && post.user.nickname) return post.user.nickname;
     if (post.nickname) return post.nickname;
@@ -130,7 +130,6 @@ const MainPage = () => {
     ) {
       return currentUser.nickname || currentUser.username || "나";
     }
-
     return "익명 사용자";
   };
 
@@ -147,14 +146,13 @@ const MainPage = () => {
       const response = await postAPI.togglePostLike(id);
       const { liked, likesCount } = response.data;
 
+      // 화면 업데이트
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.id === id
             ? {
                 ...post,
                 isLiked: liked,
-                liked: liked,
-                is_liked: liked,
                 likes_count: likesCount,
                 likesCount: likesCount,
               }
@@ -162,13 +160,18 @@ const MainPage = () => {
         )
       );
 
-      let likedIds = getLikedPostIds();
+      // ★ 내 ID에 해당하는 로컬 스토리지 업데이트
+      let likedIds = getLikedPostIds(currentUser.id);
+
       if (liked) {
-        if (!likedIds.includes(id)) likedIds.push(id);
+        if (!likedIds.some((pid) => String(pid) === String(id))) {
+          likedIds.push(id);
+        }
       } else {
-        likedIds = likedIds.filter((postId) => postId !== id);
+        likedIds = likedIds.filter((postId) => String(postId) !== String(id));
       }
-      setLikedPostIds(likedIds);
+
+      setLikedPostIds(currentUser.id, likedIds);
     } catch (error) {
       console.error("좋아요 실패:", error);
       alert("좋아요 처리에 실패했습니다.");
@@ -201,16 +204,14 @@ const MainPage = () => {
       )}
 
       {posts.map((post) => {
-        const isLiked = post.isLiked || post.liked || post.is_liked || false;
+        const isLikedState = !!post.isLiked;
         const likeCount =
           post.likes_count ?? post.likesCount ?? post.likes ?? 0;
         const commentCount = post.comment_count ?? post.commentCount ?? 0;
 
         return (
           <div className="post-card" key={post.id}>
-            {/* 헤더 */}
             <div className="post-header">
-              {/* ★ 프로필 이미지 표시 (onError 추가) */}
               <img
                 src={getProfileImage(post)}
                 alt="profile"
@@ -223,7 +224,6 @@ const MainPage = () => {
               <span className="header-username">{getDisplayName(post)}</span>
             </div>
 
-            {/* 이미지 */}
             {post.images && post.images.length > 0 && (
               <div
                 className="post-image"
@@ -240,11 +240,10 @@ const MainPage = () => {
               </div>
             )}
 
-            {/* 액션 */}
             <div className="post-actions">
               <div className="action-group">
                 <button
-                  className={`icon-btn heart ${isLiked ? "liked" : ""}`}
+                  className={`icon-btn heart ${isLikedState ? "liked" : ""}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleLike(post.id);
@@ -262,7 +261,6 @@ const MainPage = () => {
               </div>
             </div>
 
-            {/* 내용 */}
             <div className="post-content">
               <div className="caption">
                 <span className="caption-username">{getDisplayName(post)}</span>
@@ -275,7 +273,6 @@ const MainPage = () => {
                 </span>
               </div>
 
-              {/* 태그 */}
               {getSafeTags(post.tags).length > 0 && (
                 <div className="tags">
                   {getSafeTags(post.tags).map((tag, idx) => (
