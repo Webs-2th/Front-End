@@ -6,28 +6,37 @@ import "./CreatePostPage.css";
 
 const CreatePostPage = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // URL에 id가 있으면 '수정 모드'
+  // URL 파라미터에서 id 가져오기 (id가 있으면 '수정', 없으면 '새 글 작성')
+  const { id } = useParams();
+
+  // 숨겨진 파일 input 요소에 접근하기 위한 Ref
   const fileInputRef = useRef(null);
 
-  const [preview, setPreview] = useState(null); // 이미지 미리보기 URL
-  const [selectedFile, setSelectedFile] = useState(null); // 실제 업로드할 파일 객체
+  // -----------------------------------------------------------
+  // 1. 상태(State) 관리
+  // -----------------------------------------------------------
+  const [preview, setPreview] = useState(null); // 화면에 보여줄 이미지 URL (미리보기)
+  const [selectedFile, setSelectedFile] = useState(null); // 서버로 보낼 실제 파일 객체
 
-  const [content, setContent] = useState("");
-  const [tags, setTags] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [content, setContent] = useState(""); // 게시글 본문
+  const [tags, setTags] = useState(""); // 태그 입력값 (문자열)
+  const [loading, setLoading] = useState(false); // 로딩 상태
 
-  // 이미지 주소 처리 헬퍼 함수
+  // [유틸] 이미지 경로 보정 (미리보기용 data URI / 절대 경로 / 상대 경로 구분)
   const getImageUrl = (url) => {
     if (!url) return null;
-    if (url.startsWith("data:")) return url; // 미리보기용 Data URI
-    if (url.startsWith("http")) return url; // 절대 경로
+    if (url.startsWith("data:")) return url; // 파일 선택 시 생성된 Base64 미리보기 주소
+    if (url.startsWith("http")) return url; // 이미 완전한 주소인 경우
     const path = url.startsWith("/") ? url : `/${url}`;
-    return `http://localhost:4000${path}`;
+    return `http://localhost:4000${path}`; // 로컬 서버 경로 붙이기
   };
 
-  // 1. 수정 모드일 때 기존 데이터 불러오기
+  // -----------------------------------------------------------
+  // 2. [수정 모드] 진입 시 기존 데이터 불러오기
+  // -----------------------------------------------------------
   useEffect(() => {
     const fetchPost = async () => {
+      // id가 존재한다면 = 수정 모드임
       if (id) {
         try {
           const response = await postAPI.getPostDetail(id);
@@ -35,7 +44,7 @@ const CreatePostPage = () => {
 
           setContent(post.body);
 
-          // 태그 데이터 안전하게 처리
+          // 태그 데이터 포맷팅 (배열 -> "#태그1 #태그2" 문자열로 변환)
           let safeTags = [];
           if (Array.isArray(post.tags)) {
             safeTags = post.tags;
@@ -50,7 +59,7 @@ const CreatePostPage = () => {
             setTags(formattedTags);
           }
 
-          // 기존 이미지 설정
+          // 기존 이미지 미리보기 설정
           if (post.images && post.images.length > 0) {
             setPreview(post.images[0].url);
           }
@@ -64,24 +73,33 @@ const CreatePostPage = () => {
     fetchPost();
   }, [id, navigate]);
 
+  // -----------------------------------------------------------
+  // 3. 이미지 선택 핸들러 (미리보기 생성)
+  // -----------------------------------------------------------
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setSelectedFile(file);
+      setSelectedFile(file); // 업로드할 파일 저장
+
+      // 브라우저에서 즉시 미리보기를 보여주기 위해 FileReader 사용
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreview(reader.result);
+        setPreview(reader.result); // 읽은 결과를 미리보기 URL로 설정
       };
       reader.readAsDataURL(file);
     }
   };
 
+  // -----------------------------------------------------------
+  // 4. 저장/수정 제출 핸들러
+  // -----------------------------------------------------------
   const handleSubmit = async () => {
+    // 유효성 검사
     if (!content) {
       alert("내용을 입력해주세요.");
       return;
     }
-    // 새 글 작성인데 사진이 없으면 경고 (수정 시에는 기존 사진 유지 가능)
+    // 새 글인데 사진이 없거나, 수정인데 기존 사진도 없는 경우
     if (!id && !selectedFile && !preview) {
       alert("사진을 선택해주세요.");
       return;
@@ -92,41 +110,39 @@ const CreatePostPage = () => {
     try {
       let finalImageUrl = preview;
 
-      // 1. 새 이미지가 선택되었다면 업로드
+      // [STEP 1] 새 이미지가 선택되었다면 서버에 업로드
       if (selectedFile) {
         const formData = new FormData();
         formData.append("image", selectedFile);
         const uploadRes = await uploadAPI.uploadImage(formData);
-        finalImageUrl = uploadRes.data.url;
+        finalImageUrl = uploadRes.data.url; // 서버가 준 진짜 이미지 주소
       }
 
-      // 2. 태그 처리
+      // [STEP 2] 태그 문자열을 배열로 변환 ("#태그1 #태그2" -> ["태그1", "태그2"])
       const tagArray = tags
         .split(" ")
         .map((t) => t.trim())
         .filter((t) => t.length > 0)
         .map((t) => (t.startsWith("#") ? t : `#${t}`));
 
-      // 3. 데이터 구성
+      // [STEP 3] 전송할 데이터 구성
       const postData = {
         title: content.slice(0, 20) || "게시글",
         body: content,
         place: "Unknown",
-        // ★ 백엔드 스키마 맞춤 (url -> imageUrl)
-        images: [{ imageUrl: finalImageUrl }],
+        images: [{ imageUrl: finalImageUrl }], // 백엔드 스키마에 맞춤
         tags: tagArray,
       };
 
+      // [STEP 4] id 유무에 따라 생성(Create) 또는 수정(Update) 요청
       if (id) {
-        // [수정]
         await postAPI.updatePost(id, postData);
         alert("게시글이 수정되었습니다.");
-        navigate(`/posts/${id}`);
+        navigate(`/posts/${id}`); // 상세 페이지로 이동
       } else {
-        // [작성]
         await postAPI.createPost(postData);
         alert("게시글이 등록되었습니다.");
-        navigate("/main");
+        navigate("/main"); // 메인으로 이동
       }
     } catch (error) {
       console.error("업로드 실패:", error);
@@ -140,14 +156,14 @@ const CreatePostPage = () => {
     }
   };
 
-  // 렌더링 시 사용할 이미지 URL 계산
+  // 렌더링 시 사용할 최종 이미지 URL
   const previewUrl = getImageUrl(preview);
 
   return (
     <div className="create-post-page">
+      {/* --- 헤더 영역 --- */}
       <header className="create-header">
         <button className="icon-btn back-arrow" onClick={() => navigate(-1)}>
-          {/* 아이콘 라이브러리가 없으면 텍스트로 대체됨 */}
           <FiArrowLeft size={26} color="#262626" />
         </button>
 
@@ -162,12 +178,13 @@ const CreatePostPage = () => {
         </button>
       </header>
 
+      {/* --- 컨텐츠 영역 --- */}
       <div className="create-content">
+        {/* 이미지 업로드 영역 (클릭 시 파일 선택창 열림) */}
         <div
           className="image-upload-area"
           onClick={() => fileInputRef.current.click()}
         >
-          {/* previewUrl이 null이면 렌더링하지 않음 -> src 경고 방지 */}
           {previewUrl ? (
             <img
               src={previewUrl}
@@ -182,6 +199,7 @@ const CreatePostPage = () => {
               <span>사진 추가</span>
             </div>
           )}
+          {/* 숨겨진 input (ref로 연결됨) */}
           <input
             type="file"
             ref={fileInputRef}
@@ -191,6 +209,7 @@ const CreatePostPage = () => {
           />
         </div>
 
+        {/* 텍스트 입력 영역 */}
         <div className="input-section">
           <textarea
             className="caption-input"

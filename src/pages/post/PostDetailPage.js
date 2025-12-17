@@ -5,6 +5,9 @@ import CommentSection from "../../components/CommentSection";
 import PostOptionMenu from "./PostOptionMenu";
 import "./PostDetailPage.css";
 
+// -----------------------------------------------------------
+// [헬퍼 함수] 태그 데이터 안전 변환 (문자열 -> 배열)
+// -----------------------------------------------------------
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -16,6 +19,9 @@ const getSafeTags = (tags) => {
   return [];
 };
 
+// -----------------------------------------------------------
+// [헬퍼 함수] 로컬 스토리지에서 좋아요 목록 관리
+// -----------------------------------------------------------
 const getLikedPostIds = (userId) => {
   if (!userId) return [];
   try {
@@ -31,38 +37,50 @@ const setLikedPostIds = (userId, ids) => {
 };
 
 const PostDetailPage = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // URL에서 게시물 ID 추출
   const navigate = useNavigate();
 
-  const [post, setPost] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showOptions, setShowOptions] = useState(false);
+  // -----------------------------------------------------------
+  // 1. 상태(State) 관리
+  // -----------------------------------------------------------
+  const [post, setPost] = useState(null); // 게시물 상세 데이터
+  const [currentUser, setCurrentUser] = useState(null); // 현재 로그인한 유저
+  const [loading, setLoading] = useState(true); // 로딩 상태
+  const [showOptions, setShowOptions] = useState(false); // 더보기(... 버튼) 메뉴 표시 여부
 
+  // 댓글 아이콘 클릭 시 댓글 입력창으로 포커스를 이동시키기 위한 Ref
   const commentInputRef = useRef(null);
 
+  // -----------------------------------------------------------
+  // 2. 데이터 로딩 (게시물 상세 + 댓글 목록 + 내 정보)
+  // -----------------------------------------------------------
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
+        // 3가지 API를 동시에 호출하여 속도 최적화 (Promise.allSettled)
         const [postRes, commentsRes, userRes] = await Promise.allSettled([
           postAPI.getPostById(id),
           commentAPI.getComments(id),
           authAPI.getMe(),
         ]);
 
+        // [내 정보 설정]
         let fetchedUser = null;
         if (userRes.status === "fulfilled" && userRes.value.data) {
           fetchedUser = userRes.value.data;
           setCurrentUser(fetchedUser);
         }
 
+        // [좋아요 상태 확인] 로컬 스토리지와 대조
         const currentUserId = fetchedUser ? fetchedUser.id : null;
         const likedPostIds = getLikedPostIds(currentUserId);
 
+        // [게시물 데이터 설정]
         if (postRes.status === "fulfilled") {
           const rawPost = postRes.value.data;
+          // 내가 이 글에 좋아요를 눌렀었는지 확인
           const amILiked = likedPostIds.some(
             (pid) => String(pid) === String(id)
           );
@@ -72,6 +90,7 @@ const PostDetailPage = () => {
             isLiked: amILiked,
           };
 
+          // [댓글 데이터 설정]
           let fetchedComments = [];
           if (commentsRes.status === "fulfilled") {
             fetchedComments =
@@ -90,7 +109,7 @@ const PostDetailPage = () => {
       } catch (error) {
         console.error(error);
         alert("게시물을 불러올 수 없습니다.");
-        navigate("/main");
+        navigate("/main"); // 실패 시 메인으로 이동
       } finally {
         setLoading(false);
       }
@@ -99,6 +118,7 @@ const PostDetailPage = () => {
     if (id) fetchData();
   }, [id, navigate]);
 
+  // [유틸] 이미지 경로 보정
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -107,8 +127,11 @@ const PostDetailPage = () => {
     return `http://localhost:4000${path}`;
   };
 
+  // [유틸] 프로필 이미지 우선순위 처리 (내 글이면 내 최신 정보 사용)
   const getProfileImage = (postObj) => {
     const authorId = postObj.user_id || postObj.userId;
+
+    // 1. 작성자가 '나'인 경우 (내 최신 프로필)
     if (currentUser && String(currentUser.id) === String(authorId)) {
       if (currentUser.profile_image_url) {
         return getImageUrl(currentUser.profile_image_url);
@@ -117,6 +140,7 @@ const PostDetailPage = () => {
         return getImageUrl(currentUser.profileImageUrl);
       }
     }
+    // 2. 작성자가 '남'인 경우 (게시글 정보에 있는 프로필)
     if (postObj.user) {
       if (postObj.user.profile_image_url) {
         return getImageUrl(postObj.user.profile_image_url);
@@ -125,13 +149,16 @@ const PostDetailPage = () => {
         return getImageUrl(postObj.user.profileImageUrl);
       }
     }
+    // 3. Flatten된 구조 확인
     if (postObj.profile_image_url)
       return getImageUrl(postObj.profile_image_url);
     if (postObj.profileImageUrl) return getImageUrl(postObj.profileImageUrl);
 
+    // 4. 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
+  // [유틸] 닉네임 표시 로직
   const getDisplayName = (postObj) => {
     if (!postObj) return "익명";
     if (postObj.user && postObj.user.nickname) return postObj.user.nickname;
@@ -154,6 +181,9 @@ const PostDetailPage = () => {
     return dateString.split("T")[0];
   };
 
+  // -----------------------------------------------------------
+  // 3. 좋아요 토글 핸들러
+  // -----------------------------------------------------------
   const toggleLike = async () => {
     if (!post) return;
     if (!currentUser) {
@@ -162,9 +192,11 @@ const PostDetailPage = () => {
     }
 
     try {
+      // 서버 요청
       const response = await postAPI.togglePostLike(post.id);
       const { liked, likesCount } = response.data;
 
+      // 화면 즉시 갱신
       setPost((prev) => ({
         ...prev,
         isLiked: liked,
@@ -172,6 +204,7 @@ const PostDetailPage = () => {
         likesCount: likesCount,
       }));
 
+      // 로컬 스토리지 업데이트 (새로고침 대비)
       let likedIds = getLikedPostIds(currentUser.id);
       if (liked) {
         if (!likedIds.some((pid) => String(pid) === String(post.id))) {
@@ -187,6 +220,9 @@ const PostDetailPage = () => {
     }
   };
 
+  // -----------------------------------------------------------
+  // 4. 댓글 관련 핸들러 (추가, 삭제, 수정)
+  // -----------------------------------------------------------
   const handleAddComment = async (text) => {
     if (!currentUser) {
       alert("로그인 후 댓글을 작성할 수 있습니다.");
@@ -195,6 +231,7 @@ const PostDetailPage = () => {
 
     try {
       const response = await commentAPI.createComment(id, { content: text });
+      // 낙관적 업데이트(Optimistic Update)를 위한 새 댓글 객체 생성
       const newComment = {
         ...response.data,
         id: response.data?.id || Date.now(),
@@ -244,8 +281,11 @@ const PostDetailPage = () => {
     }
   };
 
+  // -----------------------------------------------------------
+  // 5. 게시물 수정/삭제 핸들러
+  // -----------------------------------------------------------
   const handleEditPost = () => {
-    navigate(`/posts/edit/${id}`);
+    navigate(`/posts/edit/${id}`); // 수정 페이지로 이동
     setShowOptions(false);
   };
 
@@ -253,7 +293,7 @@ const PostDetailPage = () => {
     if (window.confirm("정말로 삭제하시겠습니까?")) {
       try {
         await postAPI.deletePost(id);
-        navigate("/main", { replace: true });
+        navigate("/main", { replace: true }); // 삭제 후 메인으로 이동
       } catch {
         alert("삭제 실패");
       }
@@ -261,6 +301,7 @@ const PostDetailPage = () => {
     setShowOptions(false);
   };
 
+  // 더보기 버튼(...) 클릭 시 권한 확인 (내 글인지)
   const handleMoreClick = () => {
     const isMyPost =
       (currentUser?.id &&
@@ -290,9 +331,11 @@ const PostDetailPage = () => {
 
   return (
     <div className="post-detail-page">
+      {/* 헤더: 뒤로 가기, 제목, 더보기 버튼 */}
       <header className="detail-header">
         <button className="icon-btn back" onClick={() => navigate(-1)} />
         <span className="header-title">게시물</span>
+        {/* 내 글일 때만 더보기(...) 버튼 표시 */}
         {((currentUser?.id &&
           post.user_id &&
           String(currentUser.id) === String(post.user_id)) ||
@@ -308,7 +351,9 @@ const PostDetailPage = () => {
         )}
       </header>
 
+      {/* 컨텐츠 영역 */}
       <div className="detail-content">
+        {/* 작성자 정보 */}
         <div className="user-info">
           <img
             src={getProfileImage(post)}
@@ -322,6 +367,7 @@ const PostDetailPage = () => {
           <span className="username">{getDisplayName(post)}</span>
         </div>
 
+        {/* 게시물 이미지 */}
         {post.images && post.images.length > 0 && (
           <div className="post-image-container">
             <img
@@ -334,24 +380,29 @@ const PostDetailPage = () => {
           </div>
         )}
 
+        {/* 좋아요/댓글 아이콘 */}
         <div className="action-buttons">
           <button
             className={`icon-btn heart ${isLikedState ? "liked" : ""}`}
             onClick={toggleLike}
           />
+          {/* 댓글 아이콘 클릭 시 입력창 포커스 */}
           <button
             className="icon-btn comment"
             onClick={() => commentInputRef.current?.focus()}
           />
         </div>
 
+        {/* 좋아요 수, 댓글 수 */}
         <div className="likes-info">
           <span className="likes-count">좋아요 {likeCount}개</span>
           <span className="comments-count">댓글 {commentCount}개</span>
         </div>
 
+        {/* 본문 내용 */}
         <div className="caption-section">{post.body}</div>
 
+        {/* 태그 목록 */}
         {getSafeTags(post.tags).length > 0 && (
           <div className="tags-section">
             {getSafeTags(post.tags).map((tag, idx) => (
@@ -362,8 +413,10 @@ const PostDetailPage = () => {
           </div>
         )}
 
+        {/* 작성일 */}
         <div className="date-info">{formatDate(post.published_at)}</div>
 
+        {/* 댓글 섹션 컴포넌트 */}
         <CommentSection
           comments={post.comments || []}
           currentUser={currentUser}

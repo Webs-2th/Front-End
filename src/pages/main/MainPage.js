@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
 
+// 태그 데이터를 배열로 안전하게 변환 (문자열이면 잘라서 배열로 만듦)
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -14,6 +15,7 @@ const getSafeTags = (tags) => {
   return [];
 };
 
+// 로컬 스토리지에서 유저별 좋아요 목록 가져오기
 const getLikedPostIds = (userId) => {
   if (!userId) return [];
   try {
@@ -23,6 +25,7 @@ const getLikedPostIds = (userId) => {
   }
 };
 
+// 로컬 스토리지에 좋아요 목록 저장하기
 const setLikedPostIds = (userId, ids) => {
   if (!userId) return;
   localStorage.setItem(`likedPosts_${userId}`, JSON.stringify(ids));
@@ -30,29 +33,35 @@ const setLikedPostIds = (userId, ids) => {
 
 const MainPage = () => {
   const navigate = useNavigate();
+  // 게시물 목록, 현재 로그인 유저, 로딩 상태 관리
   const [posts, setPosts] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 페이지 접속 시 데이터 로딩 (게시물 + 내 정보)
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
+        // API 병렬 요청 (속도 최적화)
         const [postsRes, userRes] = await Promise.allSettled([
           postAPI.getPosts(),
           authAPI.getMe(),
         ]);
 
+        // 내 정보 저장
         let fetchedUser = null;
         if (userRes.status === "fulfilled" && userRes.value.data) {
           fetchedUser = userRes.value.data;
           setCurrentUser(fetchedUser);
         }
 
+        // 좋아요 상태 확인을 위한 ID 준비
         const currentUserId = fetchedUser ? fetchedUser.id : null;
         const likedPostIds = getLikedPostIds(currentUserId);
 
+        // 게시물 데이터 가공 (삭제된 글 제외, 좋아요 여부 표시)
         if (postsRes.status === "fulfilled") {
           const items = postsRes.value.data.items || postsRes.value.data || [];
 
@@ -78,6 +87,7 @@ const MainPage = () => {
     fetchData();
   }, []);
 
+  // 이미지 경로 보정 (상대 경로는 로컬 서버 주소 붙이기)
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -86,9 +96,11 @@ const MainPage = () => {
     return `http://localhost:4000${path}`;
   };
 
+  // 프로필 이미지 결정 로직 (내 글이면 내 최신 프사, 아니면 작성자 프사)
   const getProfileImage = (post) => {
     const authorId = post.user_id || post.userId;
 
+    // 1. 내 글인 경우
     if (currentUser && String(currentUser.id) === String(authorId)) {
       if (currentUser.profile_image_url)
         return getImageUrl(currentUser.profile_image_url);
@@ -96,6 +108,7 @@ const MainPage = () => {
         return getImageUrl(currentUser.profileImageUrl);
     }
 
+    // 2. 남의 글인 경우 (다양한 변수명 체크)
     if (post.user) {
       if (post.user.profile_image_url)
         return getImageUrl(post.user.profile_image_url);
@@ -104,12 +117,15 @@ const MainPage = () => {
       if (post.user.profileUrl) return getImageUrl(post.user.profileUrl);
     }
 
+    // 3. Flatten된 구조 체크
     if (post.profile_image_url) return getImageUrl(post.profile_image_url);
     if (post.profileImageUrl) return getImageUrl(post.profileImageUrl);
 
+    // 4. 없으면 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
+  // 닉네임 표시 로직
   const getDisplayName = (post) => {
     if (post.user && post.user.nickname) return post.user.nickname;
     if (post.nickname) return post.nickname;
@@ -125,6 +141,7 @@ const MainPage = () => {
     return "익명 사용자";
   };
 
+  // 좋아요 버튼 클릭 핸들러
   const toggleLike = async (id) => {
     if (!currentUser) {
       alert("로그인이 필요합니다.");
@@ -132,9 +149,11 @@ const MainPage = () => {
     }
 
     try {
+      // 서버 요청
       const response = await postAPI.togglePostLike(id);
       const { liked, likesCount } = response.data;
 
+      // 화면 상태 즉시 업데이트
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.id === id
@@ -148,6 +167,7 @@ const MainPage = () => {
         )
       );
 
+      // 로컬 스토리지 동기화
       let likedIds = getLikedPostIds(currentUser.id);
       if (liked) {
         if (!likedIds.some((pid) => String(pid) === String(id))) {
@@ -163,10 +183,12 @@ const MainPage = () => {
     }
   };
 
+  // 상세 페이지 이동
   const goToDetail = (id) => {
     navigate(`/posts/${id}`);
   };
 
+  // 날짜 포맷 변환 (YYYY-MM-DD)
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -182,12 +204,14 @@ const MainPage = () => {
 
   return (
     <div className="main-page">
+      {/* 게시물이 없을 때 메시지 */}
       {posts.length === 0 && (
         <div className="empty-message">
           게시물이 없습니다. 첫 글을 작성해보세요!
         </div>
       )}
 
+      {/* 게시물 목록 렌더링 */}
       {posts.map((post) => {
         const isLikedState = !!post.isLiked;
         const likeCount =
@@ -196,6 +220,7 @@ const MainPage = () => {
 
         return (
           <div className="post-card" key={post.id}>
+            {/* 헤더: 프로필 사진 + 이름 */}
             <div className="post-header">
               <img
                 src={getProfileImage(post)}
@@ -209,6 +234,7 @@ const MainPage = () => {
               <span className="header-username">{getDisplayName(post)}</span>
             </div>
 
+            {/* 본문 이미지 */}
             {post.images && post.images.length > 0 && (
               <div
                 className="post-image"
@@ -225,6 +251,7 @@ const MainPage = () => {
               </div>
             )}
 
+            {/* 액션 버튼 (좋아요, 댓글) */}
             <div className="post-actions">
               <div className="action-group">
                 <button
@@ -246,6 +273,7 @@ const MainPage = () => {
               </div>
             </div>
 
+            {/* 내용 및 태그 */}
             <div className="post-content">
               <div className="caption">
                 <span className="caption-username">{getDisplayName(post)}</span>

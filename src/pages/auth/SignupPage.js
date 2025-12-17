@@ -6,14 +6,15 @@ import "./SignupPage.css";
 const SignupPage = () => {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [nickname, setNickname] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState(""); // 이메일
+  const [nickname, setNickname] = useState(""); // 닉네임
+  const [password, setPassword] = useState(""); // 비밀번호
+  const [confirmPassword, setConfirmPassword] = useState(""); //비밀번호 확인
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false); // 요청 진행
+  const [error, setError] = useState(""); // 에러 메시지
 
+  //회원가입 요청 진행
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -32,7 +33,6 @@ const SignupPage = () => {
 
     try {
       // 1. 회원가입 API 호출
-      // 명세서 requestBody: { email, password, nickname }
       await authAPI.register({
         email,
         password,
@@ -72,7 +72,7 @@ const SignupPage = () => {
             required
           />
 
-          {/* 닉네임 입력 (추가됨) */}
+          {/* 닉네임 입력 */}
           <input
             type="text"
             placeholder="사용자 이름 (닉네임)"
