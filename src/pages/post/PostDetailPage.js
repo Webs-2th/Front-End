@@ -107,33 +107,28 @@ const PostDetailPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // ★ [핵심 수정] 프로필 이미지 찾는 로직 강화
   const getProfileImage = (postObj) => {
     const authorId = postObj.user_id || postObj.userId;
-
-    // 1. 내 글인 경우
     if (currentUser && String(currentUser.id) === String(authorId)) {
-      if (currentUser.profile_image_url)
+      if (currentUser.profile_image_url) {
         return getImageUrl(currentUser.profile_image_url);
-      if (currentUser.profileImageUrl)
+      }
+      if (currentUser.profileImageUrl) {
         return getImageUrl(currentUser.profileImageUrl);
+      }
     }
-
-    // 2. 남의 글인 경우 (user 객체 확인)
     if (postObj.user) {
-      if (postObj.user.profile_image_url)
+      if (postObj.user.profile_image_url) {
         return getImageUrl(postObj.user.profile_image_url);
-      if (postObj.user.profileImageUrl)
+      }
+      if (postObj.user.profileImageUrl) {
         return getImageUrl(postObj.user.profileImageUrl);
-      if (postObj.user.profileUrl) return getImageUrl(postObj.user.profileUrl);
+      }
     }
-
-    // 3. 평평한 구조 확인
     if (postObj.profile_image_url)
       return getImageUrl(postObj.profile_image_url);
     if (postObj.profileImageUrl) return getImageUrl(postObj.profileImageUrl);
 
-    // 4. 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
@@ -296,7 +291,8 @@ const PostDetailPage = () => {
   return (
     <div className="post-detail-page">
       <header className="detail-header">
-        <button className="icon-btn back" onClick={() => navigate("/main")} />
+        {/* 수정됨: 이전 화면으로 이동하도록 -1 설정 */}
+        <button className="icon-btn back" onClick={() => navigate(-1)} />
         <span className="header-title">게시물</span>
         {((currentUser?.id &&
           post.user_id &&
