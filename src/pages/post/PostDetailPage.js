@@ -16,7 +16,7 @@ const getSafeTags = (tags) => {
   return [];
 };
 
-// ★ 좋아요 localStorage 헬퍼 (유저별 분리)
+// 좋아요 localStorage(유저별 분리)
 const getLikedPostIds = (userId) => {
   if (!userId) return [];
   try {
