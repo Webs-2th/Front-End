@@ -16,7 +16,7 @@ const getSafeTags = (tags) => {
 };
 
 // 좋아요 localStorage 헬퍼 (유저별 분리)
-getLikedPostIds = (userId) => {
+const getLikedPostIds = (userId) => {
   if (!userId) return []; // 로그인 안 했으면 빈 배열
   try {
     // 키 이름을 "likedPosts_유저ID"로 설정하여 계정별로 분리
