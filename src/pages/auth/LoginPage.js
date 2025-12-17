@@ -33,7 +33,7 @@ const LoginPage = () => {
       navigate("/main");
     } catch (err) {
       console.error(err);
-      // 에러 메시지 처리 (401 등)
+      // 에러 메시지 처리
       setError("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
     } finally {
       setLoading(false);

@@ -7,7 +7,6 @@ const CommentSection = ({
   onAdd,
   onDelete,
   onUpdate,
-  inputRef,
 }) => {
   const [text, setText] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -37,9 +36,7 @@ const CommentSection = ({
   };
 
   const getDisplayName = (comment) => {
-    return (
-      comment.user?.nickname || comment.nickname || comment.username || "익명"
-    );
+    return comment.user?.nickname || comment.nickname || comment.username;
   };
 
   const isMyComment = (comment) => {
@@ -114,7 +111,6 @@ const CommentSection = ({
 
       <form className="comment-input-bar" onSubmit={handleSubmit}>
         <input
-          ref={inputRef}
           type="text"
           placeholder="댓글 달기..."
           value={text}

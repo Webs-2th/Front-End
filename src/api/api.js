@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// --- 1. 쿠키 관리 함수 ---
 export const setCookie = (name, value, days = 7) => {
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
@@ -17,9 +16,8 @@ export const removeCookie = (name) => {
   document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
 };
 
-// --- 2. Axios 인스턴스 ---
 const api = axios.create({
-  baseURL: "http://localhost:4000/api/v1", // Swagger Server URL
+  baseURL: "http://localhost:4000/api/v1",
   headers: {
     "Content-Type": "application/json",
   },
@@ -70,17 +68,15 @@ export const commentAPI = {
 export const userAPI = {
   getMyProfile: () => api.get("/users/me"),
 
-  // ★ [핵심 수정] 422 에러 방지 로직 추가
   updateMyProfile: (data) => {
-    // 서버가 null을 받으면 422 에러를 낼 수 있으므로 안전하게 처리
     const payload = {
-      nickname: data.nickname, // 닉네임은 필수라 null일 확률 낮음
-      bio: data.bio || "", // bio가 null이면 빈 문자열로 보냄
-      // 프론트에서 넘어온 키가 무엇이든 API 스펙(profileImageUrl)에 맞춤
+      nickname: data.nickname,
+      bio: data.bio || "",
+
       profileImageUrl: data.profileImageUrl || data.profile_image_url || "",
     };
 
-    console.log("프로필 수정 요청 데이터:", payload); // 디버깅용 로그
+    console.log("프로필 수정 요청 데이터:", payload);
     return api.patch("/users/me", payload);
   },
 
