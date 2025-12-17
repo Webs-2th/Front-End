@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { authAPI, userAPI, uploadAPI, removeCookie } from "../../api/api";
 import "./MyPage.css";
@@ -6,10 +6,11 @@ import "./MyPage.css";
 const MyPage = () => {
   const navigate = useNavigate();
 
-  const fileInputRef = useRef(null); // 파일에 직접 접근
+  // [Ref] 파일 업로드 input 요소에 직접 접근하기 위한 참조 변수
+  const fileInputRef = useRef(null);
 
   // 1. 상태(State) 관리
-  const [user, setUser] = useState(null); // 로그인한 사용자 정보
+  const [user, setUser] = useState(null); // 로그인한 사용자 정보 (서버에서 받아옴)
 
   // 프로필 수정 폼 데이터 (닉네임, 자기소개, 프사 URL)
   const [editForm, setEditForm] = useState({
@@ -25,16 +26,17 @@ const MyPage = () => {
   const [isEditing, setIsEditing] = useState(false); // 프로필 수정 모드
   const [loading, setLoading] = useState(true); // 데이터 로딩 중 여부
 
-  // 2. 로그아웃 핸들러
-  const handleLogout = useCallback(() => {
-    removeCookie("accessToken");
-    localStorage.removeItem("accessToken");
-    setUser(null);
-    setMyPosts([]);
-    setMyComments([]);
+  // 2. 로그아웃 핸들러 (useCallback 제거됨)
+  // 이제 컴포넌트가 리렌더링 될 때마다 이 함수도 새로 생성됩니다.
+  const handleLogout = () => {
+    removeCookie("accessToken"); // 쿠키에서 토큰 삭제
+    localStorage.removeItem("accessToken"); // 로컬스토리지 토큰도 삭제
+    setUser(null); // 유저 상태 초기화
+    setMyPosts([]); // 게시물 목록 초기화
+    setMyComments([]); // 댓글 목록 초기화
     alert("로그아웃 되었습니다.");
-    navigate("/login");
-  }, [navigate]);
+    navigate("/login"); // 로그인 페이지로 이동
+  };
 
   // 3. 초기 데이터 로딩 (useEffect)
   useEffect(() => {
@@ -77,7 +79,9 @@ const MyPage = () => {
     };
 
     fetchData();
-  }, [navigate, handleLogout]);
+    // 중요: handleLogout이 useCallback 없이 정의되었으므로 의존성 배열에서 제거해야 합니다.
+    // 넣으면 무한 루프에 빠질 위험이 있습니다.
+  }, [navigate]);
 
   // [유틸] 이미지 URL 보정 함수
   const getImageUrl = (url) => {
