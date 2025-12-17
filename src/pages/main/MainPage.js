@@ -86,11 +86,9 @@ const MainPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // ★ [핵심 수정] 프로필 이미지 찾는 로직 강화
   const getProfileImage = (post) => {
     const authorId = post.user_id || post.userId;
 
-    // 1. 내 글인 경우: 내 최신 정보 우선
     if (currentUser && String(currentUser.id) === String(authorId)) {
       if (currentUser.profile_image_url)
         return getImageUrl(currentUser.profile_image_url);
@@ -98,7 +96,6 @@ const MainPage = () => {
         return getImageUrl(currentUser.profileImageUrl);
     }
 
-    // 2. 남의 글인 경우: post.user 객체 안 확인
     if (post.user) {
       if (post.user.profile_image_url)
         return getImageUrl(post.user.profile_image_url);
@@ -107,11 +104,9 @@ const MainPage = () => {
       if (post.user.profileUrl) return getImageUrl(post.user.profileUrl);
     }
 
-    // 3. 혹시 post 객체 바로 아래에 있는지 확인 (Flatten된 경우)
     if (post.profile_image_url) return getImageUrl(post.profile_image_url);
     if (post.profileImageUrl) return getImageUrl(post.profileImageUrl);
 
-    // 4. 전부 없으면 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 

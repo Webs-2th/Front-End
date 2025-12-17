@@ -291,7 +291,6 @@ const PostDetailPage = () => {
   return (
     <div className="post-detail-page">
       <header className="detail-header">
-        {/* 수정됨: 이전 화면으로 이동하도록 -1 설정 */}
         <button className="icon-btn back" onClick={() => navigate(-1)} />
         <span className="header-title">게시물</span>
         {((currentUser?.id &&

@@ -72,7 +72,6 @@ const MyPage = () => {
     fetchData();
   }, [navigate, handleLogout]);
 
-  // 이미지 URL 처리 함수
   const getImageUrl = (url) => {
     if (!url) return null;
     if (url.startsWith("http")) return url;
@@ -81,7 +80,6 @@ const MyPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // 상세 페이지 이동 함수
   const goToDetail = (id) => {
     if (!id) {
       alert("게시물 정보를 찾을 수 없습니다.");
@@ -90,13 +88,11 @@ const MyPage = () => {
     navigate(`/posts/${id}`);
   };
 
-  // 텍스트 편집 핸들러
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 이미지 변경 핸들러
   const handleProfileImgChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;

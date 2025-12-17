@@ -7,7 +7,7 @@ const SignupPage = () => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
-  const [nickname, setNickname] = useState(""); // 닉네임 상태 추가 (API 필수값)
+  const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -23,7 +23,6 @@ const SignupPage = () => {
       return;
     }
 
-    // API 명세: 비밀번호 최소 8자 (필요시 프론트 유효성 검사 추가)
     if (password.length < 8) {
       setError("비밀번호는 8자 이상이어야 합니다.");
       return;
