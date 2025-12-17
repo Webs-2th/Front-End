@@ -21,7 +21,6 @@ const MyPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // --- 로그아웃 핸들러 ---
   const handleLogout = useCallback(() => {
     removeCookie("accessToken");
     localStorage.removeItem("accessToken");
@@ -45,11 +44,11 @@ const MyPage = () => {
 
         const userData = userRes.data;
         setUser(userData);
-
         setEditForm({
           nickname: userData.nickname || "",
           bio: userData.bio || "",
-          profile_image_url: userData.profile_image_url || "",
+          profile_image_url:
+            userData.profile_image_url || userData.profileImageUrl || "",
         });
 
         // 1. 내 게시물
@@ -120,6 +119,7 @@ const MyPage = () => {
       setUser((prev) => ({
         ...prev,
         profile_image_url: newImageUrl,
+        profileImageUrl: newImageUrl,
       }));
 
       setEditForm((prev) => ({
@@ -141,7 +141,7 @@ const MyPage = () => {
     setEditForm({
       nickname: user.nickname || "",
       bio: user.bio || "",
-      profile_image_url: user.profile_image_url || "",
+      profile_image_url: user.profile_image_url || user.profileImageUrl || "",
     });
     setIsEditing(true);
   };
@@ -166,9 +166,10 @@ const MyPage = () => {
   if (loading) return <div className="loading">로딩 중...</div>;
   if (!user) return null;
 
+  // ★ 수정: 렌더링 시 프로필 이미지 경로 결정 로직 강화
   const currentProfileUrl = isEditing
     ? getImageUrl(editForm.profile_image_url)
-    : getImageUrl(user.profile_image_url);
+    : getImageUrl(user.profile_image_url || user.profileImageUrl);
 
   const defaultProfileUrl =
     "https://cdn-icons-png.flaticon.com/512/847/847969.png";
@@ -304,10 +305,7 @@ const MyPage = () => {
               <div className="no-content">작성한 댓글이 없습니다.</div>
             ) : (
               myComments.map((comment, idx) => {
-                // 원본 게시물 객체 확인
                 const targetPost = comment.post || comment.Post;
-
-                //  ID 추출 로직 강화: post 객체 ID -> camelCase -> snake_case 순서로 확인
                 const targetPostId =
                   targetPost?.id || comment.postId || comment.post_id;
 

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
 
-// 태그 안전 처리
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -15,11 +14,9 @@ const getSafeTags = (tags) => {
   return [];
 };
 
-// 좋아요 localStorage 헬퍼 (유저별 분리)
 const getLikedPostIds = (userId) => {
-  if (!userId) return []; // 로그인 안 했으면 빈 배열
+  if (!userId) return [];
   try {
-    // 키 이름을 "likedPosts_유저ID"로 설정하여 계정별로 분리
     return JSON.parse(localStorage.getItem(`likedPosts_${userId}`)) || [];
   } catch {
     return [];
@@ -37,31 +34,25 @@ const MainPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 게시글 + 내 정보 로딩
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // 1. 데이터 병렬 요청
         const [postsRes, userRes] = await Promise.allSettled([
           postAPI.getPosts(),
           authAPI.getMe(),
         ]);
 
-        // 2. 유저 정보 먼저 확인 (ID가 필요함)
         let fetchedUser = null;
         if (userRes.status === "fulfilled" && userRes.value.data) {
           fetchedUser = userRes.value.data;
           setCurrentUser(fetchedUser);
-          console.log("현재 로그인한 유저:", fetchedUser);
         }
 
-        // 3. 해당 유저의 좋아요 목록 가져오기 (비로그인이면 빈 배열)
         const currentUserId = fetchedUser ? fetchedUser.id : null;
         const likedPostIds = getLikedPostIds(currentUserId);
 
-        // 4. 게시글 처리
         if (postsRes.status === "fulfilled") {
           const items = postsRes.value.data.items || postsRes.value.data || [];
 
@@ -69,7 +60,6 @@ const MainPage = () => {
             .filter((post) => !post.deleted_at)
             .map((post) => ({
               ...post,
-              // 내 ID로 저장된 로컬스토리지 목록에 있는지 확인
               isLiked: likedPostIds.some(
                 (pid) => String(pid) === String(post.id)
               ),
@@ -79,7 +69,7 @@ const MainPage = () => {
           console.log("불러온 게시물:", validPosts);
         }
       } catch (error) {
-        console.error("데이터 로딩 실패:", error);
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -88,7 +78,6 @@ const MainPage = () => {
     fetchData();
   }, []);
 
-  // 이미지 URL 보정
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -97,16 +86,32 @@ const MainPage = () => {
     return `http://localhost:4000${path}`;
   };
 
+  // ★ [핵심 수정] 프로필 이미지 찾는 로직 강화
   const getProfileImage = (post) => {
     const authorId = post.user_id || post.userId;
+
+    // 1. 내 글인 경우: 내 최신 정보 우선
     if (currentUser && String(currentUser.id) === String(authorId)) {
-      if (currentUser.profile_image_url) {
+      if (currentUser.profile_image_url)
         return getImageUrl(currentUser.profile_image_url);
-      }
+      if (currentUser.profileImageUrl)
+        return getImageUrl(currentUser.profileImageUrl);
     }
-    if (post.user && post.user.profile_image_url) {
-      return getImageUrl(post.user.profile_image_url);
+
+    // 2. 남의 글인 경우: post.user 객체 안 확인
+    if (post.user) {
+      if (post.user.profile_image_url)
+        return getImageUrl(post.user.profile_image_url);
+      if (post.user.profileImageUrl)
+        return getImageUrl(post.user.profileImageUrl);
+      if (post.user.profileUrl) return getImageUrl(post.user.profileUrl);
     }
+
+    // 3. 혹시 post 객체 바로 아래에 있는지 확인 (Flatten된 경우)
+    if (post.profile_image_url) return getImageUrl(post.profile_image_url);
+    if (post.profileImageUrl) return getImageUrl(post.profileImageUrl);
+
+    // 4. 전부 없으면 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
@@ -125,7 +130,6 @@ const MainPage = () => {
     return "익명 사용자";
   };
 
-  // 좋아요 토글
   const toggleLike = async (id) => {
     if (!currentUser) {
       alert("로그인이 필요합니다.");
@@ -136,7 +140,6 @@ const MainPage = () => {
       const response = await postAPI.togglePostLike(id);
       const { liked, likesCount } = response.data;
 
-      // 화면 업데이트
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.id === id
@@ -150,9 +153,7 @@ const MainPage = () => {
         )
       );
 
-      // 내 ID에 해당하는 로컬 스토리지 업데이트
       let likedIds = getLikedPostIds(currentUser.id);
-
       if (liked) {
         if (!likedIds.some((pid) => String(pid) === String(id))) {
           likedIds.push(id);
@@ -160,10 +161,9 @@ const MainPage = () => {
       } else {
         likedIds = likedIds.filter((postId) => String(postId) !== String(id));
       }
-
       setLikedPostIds(currentUser.id, likedIds);
     } catch (error) {
-      console.error("좋아요 실패:", error);
+      console.error(error);
       alert("좋아요 처리에 실패했습니다.");
     }
   };

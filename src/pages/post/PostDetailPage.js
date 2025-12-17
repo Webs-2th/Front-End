@@ -16,7 +16,6 @@ const getSafeTags = (tags) => {
   return [];
 };
 
-// 좋아요 localStorage(유저별 분리)
 const getLikedPostIds = (userId) => {
   if (!userId) return [];
   try {
@@ -53,22 +52,17 @@ const PostDetailPage = () => {
           authAPI.getMe(),
         ]);
 
-        // 1. 유저 정보 먼저 확인
         let fetchedUser = null;
         if (userRes.status === "fulfilled" && userRes.value.data) {
           fetchedUser = userRes.value.data;
           setCurrentUser(fetchedUser);
         }
 
-        // 2. 해당 유저의 좋아요 목록 로드
         const currentUserId = fetchedUser ? fetchedUser.id : null;
         const likedPostIds = getLikedPostIds(currentUserId);
 
-        // 3. 게시글 처리
         if (postRes.status === "fulfilled") {
           const rawPost = postRes.value.data;
-
-          // 내 목록에 이 글 ID가 있는지 확인
           const amILiked = likedPostIds.some(
             (pid) => String(pid) === String(id)
           );
@@ -94,7 +88,7 @@ const PostDetailPage = () => {
           throw new Error("게시물 로딩 실패");
         }
       } catch (error) {
-        console.error("데이터 로딩 실패:", error);
+        console.error(error);
         alert("게시물을 불러올 수 없습니다.");
         navigate("/main");
       } finally {
@@ -113,16 +107,33 @@ const PostDetailPage = () => {
     return `http://localhost:4000${path}`;
   };
 
+  // ★ [핵심 수정] 프로필 이미지 찾는 로직 강화
   const getProfileImage = (postObj) => {
     const authorId = postObj.user_id || postObj.userId;
+
+    // 1. 내 글인 경우
     if (currentUser && String(currentUser.id) === String(authorId)) {
-      if (currentUser.profile_image_url) {
+      if (currentUser.profile_image_url)
         return getImageUrl(currentUser.profile_image_url);
-      }
+      if (currentUser.profileImageUrl)
+        return getImageUrl(currentUser.profileImageUrl);
     }
-    if (postObj.user && postObj.user.profile_image_url) {
-      return getImageUrl(postObj.user.profile_image_url);
+
+    // 2. 남의 글인 경우 (user 객체 확인)
+    if (postObj.user) {
+      if (postObj.user.profile_image_url)
+        return getImageUrl(postObj.user.profile_image_url);
+      if (postObj.user.profileImageUrl)
+        return getImageUrl(postObj.user.profileImageUrl);
+      if (postObj.user.profileUrl) return getImageUrl(postObj.user.profileUrl);
     }
+
+    // 3. 평평한 구조 확인
+    if (postObj.profile_image_url)
+      return getImageUrl(postObj.profile_image_url);
+    if (postObj.profileImageUrl) return getImageUrl(postObj.profileImageUrl);
+
+    // 4. 기본 이미지
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
@@ -166,7 +177,6 @@ const PostDetailPage = () => {
         likesCount: likesCount,
       }));
 
-      // 내 ID에 해당하는 로컬스토리지 업데이트
       let likedIds = getLikedPostIds(currentUser.id);
       if (liked) {
         if (!likedIds.some((pid) => String(pid) === String(post.id))) {
@@ -177,7 +187,7 @@ const PostDetailPage = () => {
       }
       setLikedPostIds(currentUser.id, likedIds);
     } catch (error) {
-      console.error("좋아요 실패:", error);
+      console.error(error);
       alert("좋아요 처리에 실패했습니다.");
     }
   };
@@ -205,7 +215,7 @@ const PostDetailPage = () => {
         comment_count: (prev.comment_count || 0) + 1,
       }));
     } catch (error) {
-      console.error("댓글 작성 실패:", error);
+      console.error(error);
       alert("댓글 작성에 실패했습니다.");
     }
   };
@@ -220,7 +230,7 @@ const PostDetailPage = () => {
           comment_count: Math.max(0, (prev.comment_count || 0) - 1),
         }));
       } catch (error) {
-        console.error("댓글 삭제 실패:", error);
+        console.error(error);
       }
     }
   };
@@ -235,7 +245,7 @@ const PostDetailPage = () => {
         ),
       }));
     } catch (error) {
-      console.error("댓글 수정 실패:", error);
+      console.error(error);
     }
   };
 
@@ -287,7 +297,7 @@ const PostDetailPage = () => {
     <div className="post-detail-page">
       <header className="detail-header">
         <button className="icon-btn back" onClick={() => navigate("/main")} />
-        <span className="header-title"></span>
+        <span className="header-title">게시물</span>
         {((currentUser?.id &&
           post.user_id &&
           String(currentUser.id) === String(post.user_id)) ||
