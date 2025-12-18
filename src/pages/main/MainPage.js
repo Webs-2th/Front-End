@@ -15,7 +15,7 @@ const getSafeTags = (tags) => {
   return [];
 };
 
-// [헬퍼 함수] 로컬 스토리지 좋아요 관리
+// 로컬 스토리지 좋아요 관리
 const getLikedPostIds = (userId) => {
   if (!userId) return [];
   try {
@@ -36,7 +36,7 @@ const MainPage = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 데이터 로딩 (Promise.all 사용으로 변경)
+  //(Promise.all 사용)
   useEffect(() => {
     const fetchData = async () => {
       try {
