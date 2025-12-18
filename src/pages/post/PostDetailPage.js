@@ -5,7 +5,7 @@ import CommentSection from "../../components/CommentSection";
 import PostOptionMenu from "./PostOptionMenu";
 import "./PostDetailPage.css";
 
-//태그 데이터 안전 변환
+// [헬퍼 함수] 태그 데이터 안전 변환
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -17,7 +17,7 @@ const getSafeTags = (tags) => {
   return [];
 };
 
-// 로컬 스토리지 좋아요 관리
+// [헬퍼 함수] 로컬 스토리지 좋아요 관리
 const getLikedPostIds = (userId) => {
   if (!userId) return [];
   try {
@@ -33,6 +33,7 @@ const setLikedPostIds = (userId, ids) => {
 };
 
 const PostDetailPage = () => {
+  // 1. useParams로 URL의 게시물 ID 추출 및 페이지 이동 훅 초기화
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -42,12 +43,13 @@ const PostDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [showOptions, setShowOptions] = useState(false);
 
-  // 2. 데이터 로딩
+  // 2. 데이터 로딩 (게시물 상세 + 댓글 목록 + 내 정보)
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
+        // 2. Promise.all로 게시물, 댓글, 유저 정보를 병렬 조회하여 로딩 최적화 (비로그인 예외 처리 포함)
         const [postRes, commentsRes, userRes] = await Promise.all([
           postAPI.getPostById(id),
           commentAPI.getComments(id),
@@ -59,6 +61,7 @@ const PostDetailPage = () => {
           setCurrentUser(fetchedUser);
         }
 
+        // 로컬 스토리지의 좋아요 기록을 확인하여 초기 상태(isLiked) 설정
         const currentUserId = fetchedUser ? fetchedUser.id : null;
         const likedPostIds = getLikedPostIds(currentUserId);
 
@@ -128,9 +131,9 @@ const PostDetailPage = () => {
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
-  // 닉네임 표시 로직
+  // [유틸] 닉네임 표시 로직
   const getDisplayName = (postObj) => {
-    if (!postObj) return "";
+    if (!postObj) return "익명";
     if (postObj.user && postObj.user.nickname) return postObj.user.nickname;
     if (postObj.nickname) return postObj.nickname;
 
@@ -143,7 +146,7 @@ const PostDetailPage = () => {
       return currentUser.nickname || "나";
     }
 
-    return "";
+    return "익명 사용자";
   };
 
   const formatDate = (dateString) => {
@@ -151,7 +154,7 @@ const PostDetailPage = () => {
     return dateString.split("T")[0];
   };
 
-  // 3. 좋아요 토글 핸들러
+  // 3. 좋아요 토글: 서버 요청과 동시에 UI를 즉시 갱신하고 로컬 스토리지와 동기화하여 상태 유지
   const toggleLike = async () => {
     if (!post) return;
     if (!currentUser) {
@@ -185,7 +188,7 @@ const PostDetailPage = () => {
     }
   };
 
-  // 4. 댓글 관련 핸들러
+  // 4. 댓글 작성: API 응답 직후 상태를 업데이트하여 화면에 즉시 반영 (빠른 반응성)
   const handleAddComment = async (text) => {
     if (!currentUser) {
       alert("로그인 후 댓글을 작성할 수 있습니다.");
@@ -243,7 +246,7 @@ const PostDetailPage = () => {
     }
   };
 
-  // 5. 게시물 수정/삭제 핸들러
+  // 5. 게시물 수정/삭제 핸들러 (페이지 이동 및 삭제 요청)
   const handleEditPost = () => {
     navigate(`/posts/edit/${id}`);
     setShowOptions(false);
@@ -261,6 +264,7 @@ const PostDetailPage = () => {
     setShowOptions(false);
   };
 
+  // 6. 권한 확인: 현재 로그인한 사용자와 작성자를 비교하여 수정/삭제 메뉴 노출 제어
   const handleMoreClick = () => {
     const isMyPost =
       (currentUser?.id &&

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
 
-// [헬퍼 함수] 태그 데이터 안전 변환
+// [헬퍼 함수] 태그 데이터 안전 변환 (문자열 -> 배열)
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -15,7 +15,7 @@ const getSafeTags = (tags) => {
   return [];
 };
 
-// 로컬 스토리지 좋아요 관리
+// [헬퍼 함수] 로컬 스토리지에서 좋아요 목록 관리 (새로고침 시 상태 유지용)
 const getLikedPostIds = (userId) => {
   if (!userId) return [];
   try {
@@ -32,31 +32,34 @@ const setLikedPostIds = (userId, ids) => {
 
 const MainPage = () => {
   const navigate = useNavigate();
+  // 게시물 목록, 현재 로그인 유저, 로딩 상태 관리
   const [posts, setPosts] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  //(Promise.all 사용)
+  // 1. 데이터 로딩 (게시물 목록 + 내 정보)
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+
+        // Promise.all로 병렬 요청하여 로딩 속도 단축 (로그인 안 된 경우 catch로 예외 처리)
         const [postsRes, userRes] = await Promise.all([
           postAPI.getPosts(),
           authAPI.getMe().catch(() => ({ data: null })),
         ]);
 
-        // 1. 내 정보 저장
+        // [내 정보 설정]
         const fetchedUser = userRes.data;
         if (fetchedUser) {
           setCurrentUser(fetchedUser);
         }
 
-        // 2. 좋아요 상태 확인용 ID
+        // [좋아요 상태 확인] 로컬 스토리지 데이터와 비교
         const currentUserId = fetchedUser ? fetchedUser.id : null;
         const likedPostIds = getLikedPostIds(currentUserId);
 
-        // 3. 게시물 데이터 가공
+        // [게시물 데이터 가공] 삭제된 글 제외 및 좋아요 여부(isLiked) 병합
         const items = postsRes.data.items || postsRes.data || [];
         const validPosts = items
           .filter((post) => !post.deleted_at)
@@ -79,7 +82,7 @@ const MainPage = () => {
     fetchData();
   }, []);
 
-  // [유틸] 이미지 경로 보정
+  // [유틸] 이미지 경로 보정 (상대 경로 -> 절대 경로)
   const getImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -88,7 +91,7 @@ const MainPage = () => {
     return `http://localhost:4000${path}`;
   };
 
-  // [유틸] 프로필 이미지 우선순위 처리
+  // [유틸] 프로필 이미지 우선순위 처리 (내 글이면 내 최신 정보 사용)
   const getProfileImage = (post) => {
     const authorId = post.user_id || post.userId;
 
@@ -113,7 +116,7 @@ const MainPage = () => {
     return "https://cdn-icons-png.flaticon.com/512/847/847969.png";
   };
 
-  // [유틸] 닉네임 표시
+  // [유틸] 닉네임 표시 로직
   const getDisplayName = (post) => {
     if (post.user && post.user.nickname) return post.user.nickname;
     if (post.nickname) return post.nickname;
@@ -129,7 +132,7 @@ const MainPage = () => {
     return "익명 사용자";
   };
 
-  // [이벤트] 좋아요 토글
+  // 2. 좋아요 토글 핸들러 (서버 요청 + UI 즉시 갱신 + 로컬 스토리지 동기화)
   const toggleLike = async (id) => {
     if (!currentUser) {
       alert("로그인이 필요합니다.");
@@ -140,6 +143,7 @@ const MainPage = () => {
       const response = await postAPI.togglePostLike(id);
       const { liked, likesCount } = response.data;
 
+      // 화면 상태(UI) 즉시 업데이트
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post.id === id
@@ -153,6 +157,7 @@ const MainPage = () => {
         )
       );
 
+      // 로컬 스토리지 업데이트
       let likedIds = getLikedPostIds(currentUser.id);
       if (liked) {
         if (!likedIds.some((pid) => String(pid) === String(id))) {
@@ -193,6 +198,7 @@ const MainPage = () => {
         </div>
       )}
 
+      {/* 게시물 목록 렌더링 */}
       {posts.map((post) => {
         const isLikedState = !!post.isLiked;
         const likeCount =
@@ -201,6 +207,7 @@ const MainPage = () => {
 
         return (
           <div className="post-card" key={post.id}>
+            {/* 헤더: 프로필 사진 + 이름 */}
             <div className="post-header">
               <img
                 src={getProfileImage(post)}
@@ -214,6 +221,7 @@ const MainPage = () => {
               <span className="header-username">{getDisplayName(post)}</span>
             </div>
 
+            {/* 본문 이미지 (클릭 시 상세 이동) */}
             {post.images && post.images.length > 0 && (
               <div
                 className="post-image"
@@ -230,12 +238,13 @@ const MainPage = () => {
               </div>
             )}
 
+            {/* 액션 버튼 영역 (좋아요, 댓글) */}
             <div className="post-actions">
               <div className="action-group">
                 <button
                   className={`icon-btn heart ${isLikedState ? "liked" : ""}`}
                   onClick={(e) => {
-                    e.stopPropagation();
+                    e.stopPropagation(); // 카드 클릭 이벤트와 겹치지 않게 방지
                     toggleLike(post.id);
                   }}
                 />
@@ -251,6 +260,7 @@ const MainPage = () => {
               </div>
             </div>
 
+            {/* 본문 내용 및 태그 */}
             <div className="post-content">
               <div className="caption">
                 <span className="caption-username">{getDisplayName(post)}</span>
