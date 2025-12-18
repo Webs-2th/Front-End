@@ -4,6 +4,7 @@ import { postAPI, authAPI } from "../../api/api";
 import "./MainPage.css";
 
 // [헬퍼 함수] 태그 데이터 안전 변환 (문자열 -> 배열)
+// 서버에서 태그가 '문자열'로 오거나 'null'이어도, 항상 '배열'로 만들어 .map() 에러를 방지합니다.
 const getSafeTags = (tags) => {
   if (Array.isArray(tags)) return tags;
   if (typeof tags === "string") {
@@ -12,16 +13,17 @@ const getSafeTags = (tags) => {
       .map((t) => t.trim())
       .filter((t) => t !== "");
   }
-  return [];
+  return []; // 데이터가 없거나 이상하면 빈 배열 반환
 };
 
 // [헬퍼 함수] 로컬 스토리지에서 좋아요 목록 관리 (새로고침 시 상태 유지용)
+// 브라우저 저장소에서 데이터를 꺼낼 때 에러(JSON 파싱 실패)가 나도 앱이 멈추지 않도록 방어합니다.
 const getLikedPostIds = (userId) => {
   if (!userId) return [];
   try {
     return JSON.parse(localStorage.getItem(`likedPosts_${userId}`)) || [];
   } catch {
-    return [];
+    return []; // 에러 발생 시 안전하게 빈 배열 반환
   }
 };
 
